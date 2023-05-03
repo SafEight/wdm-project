@@ -1,7 +1,7 @@
 import os
 import atexit
 
-from flask import Flask
+from flask import Flask, jsonify
 import redis
 
 
@@ -18,6 +18,12 @@ db: redis.Redis = redis.Redis(host=os.environ['REDIS_HOST'],
 def close_db_connection():
     db.close()
 
+@app.get("/")
+def status():
+    data = {
+        "msg": "Success orders/ is online"
+    }
+    return jsonify(data)
 
 atexit.register(close_db_connection)
 

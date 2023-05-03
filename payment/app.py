@@ -1,7 +1,7 @@
 import os
 import atexit
 
-from flask import Flask
+from flask import Flask, jsonify
 import redis
 
 
@@ -19,6 +19,12 @@ def close_db_connection():
 
 atexit.register(close_db_connection)
 
+@app.get("/")
+def status():
+    data = {
+        "msg": "Success payment is online"
+    }
+    return jsonify(data)
 
 @app.post('/create_user')
 def create_user():
