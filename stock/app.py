@@ -49,7 +49,7 @@ def find_item(item_id: str):
 def add_stock(item_id: str, amount: int):
     added = stock.add(item_id, amount)
     if added:
-        return jsonify({"success", "Amount has been added."}), 200
+        return "", 200
     else:
         return jsonify({"error": "Item not found!"}), 400
 
@@ -58,6 +58,6 @@ def add_stock(item_id: str, amount: int):
 def remove_stock(item_id: str, amount: int):
     removed = stock.subtract(item_id, amount)
     if removed:
-        return jsonify({"success", "Amount has been subtracted."}), 200
+        return "", 200
     else:
         return jsonify({"error": "Insufficient stock or item not found!"}), 400
