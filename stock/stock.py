@@ -1,4 +1,5 @@
 import json
+import uuid
 
 class Stock:
     def __init__(self, db):
@@ -21,14 +22,15 @@ class Stock:
     def subtract(self, item_id, amount):
         item_data = self.db.get(item_id)
         if item_data:
-            item = json.loads(item_data)
-            current_stock = item["amount"]
-            if current_stock >= int(amount):
-                item["amount"] = current_stock - int(amount)
-                self.db.set(item_id, json.dumps(item))
-                return True
-            else:
-                return False
+            with self.db.lock(item_id):
+                item = json.loads(item_data)
+                current_stock = item["amount"]
+                if current_stock >= int(amount):
+                    item["amount"] = current_stock - int(amount)
+                    self.db.set(item_id, json.dumps(item))
+                    return True
+                else:
+                    return False
         else:
             return False
 
@@ -43,15 +45,7 @@ class Stock:
             return False
 
     def create(self, price):
-        item_id = self.generate_item_id()
+        item_id = str(uuid.uuid4())
         item = {"price": price, "amount": 0}
         self.db.set(item_id, json.dumps(item))
         return item_id
-
-    # Temp method to generate item IDs, this might be handled by db
-    def generate_item_id(self):
-        item_amount = len(self.db.keys())
-        if item_amount == 0:
-            return 1
-        else:
-            return item_amount + 1
