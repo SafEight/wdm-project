@@ -1,5 +1,6 @@
 import json
 import uuid
+import redis
 
 class Stock:
     def __init__(self, db):
@@ -20,19 +21,26 @@ class Stock:
     # This method might need to be updated if we want to do
     # different error handling (e.g. amount > item amount)    
     def subtract(self, item_id, amount):
-        item_data = self.db.get(item_id)
-        if item_data:
-            with self.db.lock(item_id):
+        pipe = self.db.pipeline()
+        while True:
+            try:
+                pipe.watch(item_id)
+                item_data = pipe.get(item_id)
+                if not item_data:
+                    pipe.unwatch()
+                    return False
                 item = json.loads(item_data)
                 current_stock = item["amount"]
-                if current_stock >= int(amount):
-                    item["amount"] = current_stock - int(amount)
-                    self.db.set(item_id, json.dumps(item))
-                    return True
-                else:
+                if current_stock < int(amount):
+                    pipe.unwatch()
                     return False
-        else:
-            return False
+                item["amount"] = current_stock - int(amount)
+                pipe.multi()
+                pipe.set(item_id, json.dumps(item))
+                pipe.execute()
+                return True
+            except redis.WatchError:
+                continue
 
     def add(self, item_id, amount):
         item_data = self.db.get(item_id)
