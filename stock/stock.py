@@ -43,15 +43,23 @@ class Stock:
                 continue
 
     def add(self, item_id, amount):
-        item_data = self.db.get(item_id)
-        if item_data:
-            item = json.loads(item_data)
-            item["amount"] += int(amount)
-            self.db.set(item_id, json.dumps(item))
-            return True
-        else:
-            return False
-
+        pipe = self.db.pipeline()
+        while True:
+            try:
+                pipe.watch(item_id)
+                item_data = pipe.get(item_id)
+                if not item_data:
+                    pipe.unwatch()
+                    return False
+                item = json.loads(item_data)
+                item["amount"] += int(amount)
+                pipe.multi()
+                pipe.set(item_id, json.dumps(item))
+                pipe.execute()
+                return True
+            except redis.WatchError:
+                continue
+        
     def create(self, price):
         item_id = str(uuid.uuid4())
         item = {"price": price, "amount": 0}
