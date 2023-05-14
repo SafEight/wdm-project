@@ -1,12 +1,14 @@
 import uuid
 import json
-
+import requests
+import os
 
 class Order:
+
     def __init__(self, user_id):
         self.order_id = str(uuid.uuid4())
         self.paid = False
-        self.items = []
+        self.items = [] # making this a dictionary could reduce the number of calls between services when adding repeated items
         self.user_id = user_id
         self.total_cost = 0
 
@@ -15,7 +17,15 @@ class Order:
                           sort_keys=True, indent=4)
 
     def add_item(self, item_id):
+        stockService = os.environ['STOCK_SERVICE']
+        findItem=f"{stockService}/find/{item_id}"
+        response = requests.post(findItem)
+        if response.status_code >= 400:
+            return False
+        
         self.items.append(item_id)
+        self.total_cost += response.json().price
+        return True
 
     def remove_item(self, item_id):
         self.items.remove(item_id)

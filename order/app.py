@@ -1,5 +1,6 @@
 import os
 import atexit
+import requests
 
 from flask import Flask, jsonify
 import redis
@@ -13,6 +14,9 @@ db: redis.Redis = redis.Redis(host=os.environ['REDIS_HOST'],
                               port=int(os.environ['REDIS_PORT']),
                               password=os.environ['REDIS_PASSWORD'],
                               db=int(os.environ['REDIS_DB']))
+
+paymentService = os.environ['PAYMENT_SERVICE']
+stockService = os.environ['STOCK_SERVICE']
 
 
 def close_db_connection():
@@ -46,12 +50,15 @@ def remove_order(order_id):
 @app.post('/addItem/<order_id>/<item_id>')
 def add_item(order_id, item_id):
     order_json = db.get(order_id)
-    if order_json:
-        o = order_from_JSON(order_json)
-        o.add_item(item_id)
-        db.set(o.order_id, o.toJSON())
-        return f"Added item!: {item_id}", 200
-    return "Order does not exist!", 400
+    if not order_json:
+        return "Order does not exist!", 400
+    
+    o = order_from_JSON(order_json)
+    if not o.add_item(item_id):
+        return "Item does not exist!", 400
+    
+    db.set(o.order_id, o.toJSON())
+    return f"Added item!: {item_id}", 200
 
 
 @app.delete('/removeItem/<order_id>/<item_id>')
@@ -76,4 +83,88 @@ def find_order(order_id):
 
 @app.post('/checkout/<order_id>')
 def checkout(order_id):
-    pass
+
+    # check if order exists
+    order_json = db.get(order_id)
+    if not order_json:
+        return "Order does not exist!", 400
+    
+    order = order_from_JSON(order_json)
+
+    return checkout_stock_first(order)
+    # return checkout_payment_first(order)
+
+def checkout_stock_first(order):
+    # subtract stock
+    subtractedItems = []
+    for item in order.items:
+        stockService = ""
+        subtract=f"{stockService}/subtract/{item}/1"
+        subtract_response = requests.post(subtract)
+
+        if subtract_response.status_code >= 400:
+
+            # rollback stock subtractions
+            for subtractedItem in subtractedItems:
+                stockService = ""
+                add=f"{stockService}/add/{subtractedItem}/1"
+                add_response = requests.post(add)
+                if add_response.status_code >= 400:
+                    return f"Fatal error: {add_response}", 500
+            
+            return subtract_response
+        
+        subtractedItems.append(item)
+    
+    # pay for order
+    paymentService = ""
+    pay=f"{paymentService}/pay/{order.user_id}/{order.order_id}/{order.total_cost}"
+    pay_response = requests.post(pay)
+    if pay_response.status_code >= 400:
+
+        #rollback stock subtractions
+        for item in order.items:
+            stockService = ""
+            add=f"{stockService}/add/{item}/1"
+            add_response = requests.post(add)
+            if add_response.status_code >= 400:
+                return f"Fatal error: {add_response}", 500
+
+        return pay_response
+    
+    return "Successful order!", 200
+
+def checkout_payment_first(order):
+
+    # pay for order
+    pay=f"{paymentService}/pay/{order.user_id}/{order.order_id}/{order.total_cost}"
+    pay_response = requests.post(pay)
+    if pay_response.status_code >= 400:
+        return pay_response
+
+    # subtract stock
+    subtractedItems = []
+    for item in order.items:
+        subtract=f"{stockService}/subtract/{item}/1"
+        subtract_response = requests.post(subtract)
+
+        if subtract_response.status_code >= 400:
+
+            # cancel payment
+            cancel=f"{paymentService}/cancel/{order.user_id}/{order.order_id}"
+            cancel_response = requests.post(cancel)
+            if cancel_response.status_code >= 400:
+                return f"Fatal error: {cancel_response}", 500
+
+            # rollback stock subtractions
+            for subtractedItem in subtractedItems:
+                add=f"{stockService}/add/{subtractedItem}/1"
+                add_response = requests.post(add)
+                if add_response.status_code >= 400:
+                    return f"Fatal error: {add_response}", 500
+            
+            return subtract_response
+        
+        subtractedItems.append(item)
+    
+    return "Successful order!", 200

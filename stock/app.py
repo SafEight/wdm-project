@@ -1,8 +1,10 @@
 import os
 import atexit
+import json
 
 from flask import Flask, jsonify, request
 import redis
+from stock import Stock
 
 
 app = Flask("stock-service")
@@ -19,29 +21,43 @@ def close_db_connection():
 
 atexit.register(close_db_connection)
 
+stock = Stock(db)
+
 @app.get("/")
 def status():
     data = {
         "msg": "Success stock is online"
     }
-    return jsonify(data)
+    return jsonify(data), 200
 
 
 @app.post('/item/create/<price>')
 def create_item(price: int):
-    pass
+    item_id = stock.create(price)
+    return jsonify({"item_id": item_id}), 200
 
 
 @app.get('/find/<item_id>')
 def find_item(item_id: str):
-    pass
-
+    item = stock.find(item_id)
+    if item:
+        return jsonify(json.loads(item)), 200
+    else:
+        return jsonify({"error": "Item not found!"}), 400
 
 @app.post('/add/<item_id>/<amount>')
 def add_stock(item_id: str, amount: int):
-    pass
+    added = stock.add(item_id, amount)
+    if added:
+        return jsonify({"msg": "Stock added"}), 200
+    else:
+        return jsonify({"error": "Item not found!"}), 400
 
 
 @app.post('/subtract/<item_id>/<amount>')
 def remove_stock(item_id: str, amount: int):
-    pass
+    removed = stock.subtract(item_id, amount)
+    if removed:
+        return jsonify({"msg": "Stock removed"}), 200
+    else:
+        return jsonify({"error": "Insufficient stock or item not found!"}), 400

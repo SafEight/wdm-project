@@ -9,10 +9,13 @@ services:
       - "8000:80"
 
   order-service:
+    container_name: order-service
     build: ./order
     image: order:latest
     environment:
       - GATEWAY_URL=http://gateway:80
+      - PAYMENT_SERVICE=payment-service
+      - STOCK_SERVICE=stock-service
     command: gunicorn -b 0.0.0.0:5000 app:app -w 1 --timeout 10
     env_file:
       - env/order_redis.env
@@ -24,6 +27,7 @@ services:
       - "5001:6379"
 
   stock-service:
+    container_name: stock-service
     build: ./stock
     image: stock:latest
     command: gunicorn -b 0.0.0.0:5000 app:app -w 1 --timeout 10
@@ -37,6 +41,7 @@ services:
       - "5002:6379"
 
   payment-service:
+    container_name: payment-service
     build: ./payment
     image: user:latest
     command: gunicorn -b 0.0.0.0:5000 app:app -w 1 --timeout 10
