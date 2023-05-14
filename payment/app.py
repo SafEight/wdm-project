@@ -1,6 +1,5 @@
 import os
-import atexit
-from uuid import uuid4
+import atexit, uuid
 
 from flask import Flask, jsonify
 import redis
@@ -26,7 +25,7 @@ def status():
 @app.post('/create_user')
 def create_user():
     # creates a user with 0 credit
-    user_id = str(uuid4.uuid4())
+    user_id = str(uuid.uuid4())
     db.set(f"user:{user_id}", 0)
     return jsonify({"user_id": user_id}), 200
 
