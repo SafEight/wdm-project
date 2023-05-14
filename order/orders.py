@@ -17,9 +17,10 @@ class Order:
                           sort_keys=True, indent=4)
 
     def add_item(self, item_id):
-        stockService = os.environ['STOCK_SERVICE']
+        stockService = "http://127.0.0.1:8000/stock"
         findItem=f"{stockService}/find/{item_id}"
-        response = requests.post(findItem)
+        print(findItem, flush=True)
+        response = requests.get(findItem)
         if response.status_code >= 400:
             return False
         

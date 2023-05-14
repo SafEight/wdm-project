@@ -62,6 +62,6 @@ class Stock:
         
     def create(self, price):
         item_id = str(uuid.uuid4())
-        item = {"price": price, "amount": 0}
+        item = {"price": int(price), "amount": 0}
         self.db.set(item_id, json.dumps(item))
         return item_id

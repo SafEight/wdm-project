@@ -15,8 +15,8 @@ db: redis.Redis = redis.Redis(host=os.environ['REDIS_HOST'],
                               password=os.environ['REDIS_PASSWORD'],
                               db=int(os.environ['REDIS_DB']))
 
-paymentService = os.environ['PAYMENT_SERVICE']
-stockService = os.environ['STOCK_SERVICE']
+paymentService = "http://127.0.0.1:8000/stock"
+stockService = "http://127.0.0.1:8000/payment"
 
 
 def close_db_connection():
@@ -147,7 +147,6 @@ def checkout_payment_first(order):
     for item in order.items:
         subtract=f"{stockService}/subtract/{item}/1"
         subtract_response = requests.post(subtract)
-
         if subtract_response.status_code >= 400:
 
             # cancel payment
