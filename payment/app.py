@@ -41,23 +41,24 @@ def find_user(user_id: str):
 @app.post('/add_funds/<user_id>/<amount>')
 def add_credit(user_id: str, amount: int):
     # adds funds (amount) to the user’s (user_id) account
-    try:
+    user_credit = db.get(f"user:{user_id}")
+    if user_credit is None:
+        return jsonify({"error": "User not found"}), 404
+    else:
         db.incrby(f"user:{user_id}", amount)
         return jsonify({"msg": "Funds added"}), 200
-    except:
-        return jsonify({"error": "User not found"}), 404
 
 @app.post('/pay/<user_id>/<order_id>/<amount>')
 def remove_credit(user_id: str, order_id: str, amount: int):
     # subtracts the amount of the order from the user’s credit (returns failure if credit is not enough)
     with db.lock(user_id):
-        user_credit = db.get(user_id)
+        user_credit = db.get(f"user:{user_id}")
         if user_credit is None:
             return jsonify({"error": "User not found"}), 404
         user_credit = int(user_credit)
         if user_credit < amount:
             return jsonify({"error": "Insufficient credit"}), 400
-        db.decrby(user_id, amount)
+        db.decrby(f"user:{user_id}", amount)
         return jsonify({"msg": "Payment successful"}), 200
 
 @app.post('/cancel/<user_id>/<order_id>')
