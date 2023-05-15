@@ -17,15 +17,15 @@ class Order:
                           sort_keys=True, indent=4)
 
     def add_item(self, item_id):
-        stockService = "http://127.0.0.1:8000/stock"
+        stockService = os.environ['STOCK_SERVICE']
+
         findItem=f"{stockService}/find/{item_id}"
-        print(findItem, flush=True)
         response = requests.get(findItem)
         if response.status_code >= 400:
             return False
         
         self.items.append(item_id)
-        self.total_cost += response.json().price
+        self.total_cost += response.json()['price']
         return True
 
     def remove_item(self, item_id):

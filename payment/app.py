@@ -55,9 +55,9 @@ def remove_credit(user_id: str, order_id: str, amount: int):
         if user_credit is None:
             return jsonify({"error": "User not found"}), 404
         user_credit = int(user_credit)
-        if user_credit < amount:
+        if user_credit < int(amount):
             return jsonify({"error": "Insufficient credit"}), 400
-        db.decrby(f"user:{user_id}", amount)
+        db.decrby(f"user:{user_id}", int(amount))
         return jsonify({"msg": "Payment successful"}), 200
 
 @app.post('/cancel/<user_id>/<order_id>')

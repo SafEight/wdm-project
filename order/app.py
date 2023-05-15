@@ -15,8 +15,8 @@ db: redis.Redis = redis.Redis(host=os.environ['REDIS_HOST'],
                               password=os.environ['REDIS_PASSWORD'],
                               db=int(os.environ['REDIS_DB']))
 
-paymentService = "http://127.0.0.1:8000/stock"
-stockService = "http://127.0.0.1:8000/payment"
+paymentService = os.environ['PAYMENT_SERVICE']
+stockService = os.environ['STOCK_SERVICE']
 
 
 def close_db_connection():
@@ -97,8 +97,9 @@ def checkout(order_id):
 def checkout_stock_first(order):
     # subtract stock
     subtractedItems = []
+    stockService = os.environ['STOCK_SERVICE']
     for item in order.items:
-        stockService = ""
+        # stockService = ""
         subtract=f"{stockService}/subtract/{item}/1"
         subtract_response = requests.post(subtract)
 
@@ -106,31 +107,33 @@ def checkout_stock_first(order):
 
             # rollback stock subtractions
             for subtractedItem in subtractedItems:
-                stockService = ""
+       
                 add=f"{stockService}/add/{subtractedItem}/1"
                 add_response = requests.post(add)
                 if add_response.status_code >= 400:
+                    
                     return f"Fatal error: {add_response}", 500
-            
-            return subtract_response
+            return subtract_response.json(), subtract_response.status_code
         
         subtractedItems.append(item)
     
     # pay for order
-    paymentService = ""
+    # paymentService = ""
+    paymentService = os.environ['PAYMENT_SERVICE']
+
     pay=f"{paymentService}/pay/{order.user_id}/{order.order_id}/{order.total_cost}"
     pay_response = requests.post(pay)
     if pay_response.status_code >= 400:
 
         #rollback stock subtractions
         for item in order.items:
-            stockService = ""
+            stockService = os.environ['STOCK_SERVICE']
             add=f"{stockService}/add/{item}/1"
             add_response = requests.post(add)
             if add_response.status_code >= 400:
                 return f"Fatal error: {add_response}", 500
 
-        return pay_response
+        return pay_response.json(), pay_response.status_code
     
     return "Successful order!", 200
 
@@ -138,7 +141,7 @@ def checkout_payment_first(order):
 
     # pay for order
     pay=f"{paymentService}/pay/{order.user_id}/{order.order_id}/{order.total_cost}"
-    pay_response = requests.post(pay)
+    pay_response = requests.post(pay).json()
     if pay_response.status_code >= 400:
         return pay_response
 
@@ -146,19 +149,25 @@ def checkout_payment_first(order):
     subtractedItems = []
     for item in order.items:
         subtract=f"{stockService}/subtract/{item}/1"
-        subtract_response = requests.post(subtract)
+        subtract_response = requests.post(subtract).json()
+        print("*************", flush=True)    
+        print(order, flush=True)
+        print("*************", flush=True)    
+        print(subtract_response.json(), flush=True)
+        print("*************", flush=True)
         if subtract_response.status_code >= 400:
 
             # cancel payment
             cancel=f"{paymentService}/cancel/{order.user_id}/{order.order_id}"
-            cancel_response = requests.post(cancel)
+            cancel_response = requests.post(cancel
+                                            ).json()
             if cancel_response.status_code >= 400:
                 return f"Fatal error: {cancel_response}", 500
 
             # rollback stock subtractions
             for subtractedItem in subtractedItems:
                 add=f"{stockService}/add/{subtractedItem}/1"
-                add_response = requests.post(add)
+                add_response = requests.post(add).json()
                 if add_response.status_code >= 400:
                     return f"Fatal error: {add_response}", 500
             
