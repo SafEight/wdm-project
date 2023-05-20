@@ -27,7 +27,8 @@ spec:
     spec:
       containers:
         - name: user
-          image: user:latest
+          image: gasparinorocha/wdm-payment:0.0.1
+          imagePullPolicy: Always
           resources:
             limits:
               memory: "1Gi"
@@ -48,3 +49,5 @@ spec:
               value: "redis"
             - name: REDIS_DB
               value: "0"
+      imagePullSecrets:
+      - name: regcred

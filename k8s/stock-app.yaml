@@ -27,7 +27,8 @@ spec:
     spec:
       containers:
         - name: stock
-          image: stock:latest
+          image: gasparinorocha/wdm-stock:0.0.1
+          imagePullPolicy: Always
           resources:
             limits:
               memory: "1Gi"
@@ -48,3 +49,5 @@ spec:
               value: "redis"
             - name: REDIS_DB
               value: "0"
+      imagePullSecrets:
+      - name: regcred

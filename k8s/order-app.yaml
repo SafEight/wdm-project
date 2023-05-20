@@ -27,7 +27,8 @@ spec:
     spec:
       containers:
         - name: order
-          image: order:latest
+          image: gasparinorocha/wdm-order:0.0.1
+          imagePullPolicy: Always
           resources:
             limits:
               memory: "1Gi"
@@ -40,9 +41,9 @@ spec:
           ports:
             - containerPort: 5000
           env:
-            - name: USER_SERVICE_URL
+            - name: PAYMENT_SERVICE
               value: "user-service"
-            - name: STOCK_SERVICE_URL
+            - name: STOCK_SERVICE
               value: "stock-service"
             - name: REDIS_HOST
               value: redis-master
@@ -52,3 +53,5 @@ spec:
               value: "redis"
             - name: REDIS_DB
               value: "0"
+      imagePullSecrets:
+      - name: regcred

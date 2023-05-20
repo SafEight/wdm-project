@@ -6,8 +6,6 @@ from flask import Flask, jsonify
 import redis
 from orders import Order, order_from_JSON
 
-gateway_url = os.environ['GATEWAY_URL']
-
 app = Flask("order-service")
 
 db: redis.Redis = redis.Redis(host=os.environ['REDIS_HOST'],
