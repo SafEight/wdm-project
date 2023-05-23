@@ -52,12 +52,40 @@ def add_stock(item_id: str, amount: int):
         return jsonify({"msg": "Stock added"}), 200
     else:
         return jsonify({"error": "Item not found!"}), 400
-
+    
+@app.post('/add_all')
+def add_all_stock():
+    items = request.json["items"]
+    for item in items:
+        added = stock.add(item, 1)
+        if not added:
+            return jsonify({"error": f"Item {item} not found!"}), 400
+    return "All items added!", 200
 
 @app.post('/subtract/<item_id>/<amount>')
 def remove_stock(item_id: str, amount: int):
-    removed = stock.subtract(item_id, amount)
+    removed, _ = stock.subtract(item_id, amount)
     if removed:
         return jsonify({"msg": "Stock removed"}), 200
     else:
         return jsonify({"error": "Insufficient stock or item not found!"}), 400
+
+@app.post('/subtract_all')
+def remove_all_stock():
+    items = request.json["items"]
+    subtracted_items = []
+    total_cost = 0
+    for item in items:
+        removed, price = stock.subtract(item, 1)
+
+        if not removed:
+            # Rollback subtractions
+            for sub_item in subtracted_items:
+                add_stock(sub_item, 1)
+
+            return jsonify({"error": f"Insufficient stock or item not found! Item id: {item}."}), 400
+        
+        total_cost += price
+        subtracted_items.append(item)
+    
+    return jsonify({"total_cost": total_cost}), 200

@@ -17,19 +17,15 @@ class Order:
                           sort_keys=True, indent=4)
 
     def add_item(self, item_id):
-        stockService = os.environ['STOCK_SERVICE']
-
-        findItem=f"{stockService}/find/{item_id}"
-        response = requests.get(findItem)
-        if response.status_code >= 400:
-            return False
-        
         self.items.append(item_id)
-        self.total_cost += response.json()['price']
         return True
 
     def remove_item(self, item_id):
-        self.items.remove(item_id)
+        try:
+            self.items.remove(item_id)
+            return True
+        except ValueError as ve:
+            return False
 
     def pay(self):
         self.paid = True
