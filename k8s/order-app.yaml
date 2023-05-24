@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: order-service
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     component: order
   ports:
@@ -27,8 +27,8 @@ spec:
     spec:
       containers:
         - name: order
-          image: gasparinorocha/wdm-order:0.0.1
-          imagePullPolicy: Always
+          image: order:latest
+          imagePullPolicy: Never
           resources:
             limits:
               memory: "1Gi"
@@ -53,5 +53,3 @@ spec:
               value: "redis"
             - name: REDIS_DB
               value: "0"
-      imagePullSecrets:
-      - name: regcred

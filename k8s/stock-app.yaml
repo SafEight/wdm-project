@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: stock-service
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     component: stock
   ports:
@@ -27,8 +27,8 @@ spec:
     spec:
       containers:
         - name: stock
-          image: gasparinorocha/wdm-stock:0.0.1
-          imagePullPolicy: Always
+          image: stock:latest
+          imagePullPolicy: Never
           resources:
             limits:
               memory: "1Gi"
