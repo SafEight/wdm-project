@@ -12,4 +12,4 @@ minikube image load order:latest
 minikube image load stock:latest
 minikube image load user:latest
 
-kubectl apply -f k8s/
+kubectl apply -f k8s-local/

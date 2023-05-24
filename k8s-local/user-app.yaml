@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: user-service
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     component: user
   ports:
@@ -27,8 +27,8 @@ spec:
     spec:
       containers:
         - name: user
-          image: gasparinorocha/wdm-payment:0.0.1
-          imagePullPolicy: Always
+          image: user:latest
+          imagePullPolicy: Never
           resources:
             limits:
               memory: "1Gi"

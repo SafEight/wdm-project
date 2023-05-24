@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: user-service
+  name: order-service
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
-    component: user
+    component: order
   ports:
     - port: 5000
       name: http
@@ -14,21 +14,21 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: user-deployment
+  name: order-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      component: user
+      component: order
   template:
     metadata:
       labels:
-        component: user
+        component: order
     spec:
       containers:
-        - name: user
-          image: gasparinorocha/wdm-payment:0.0.1
-          imagePullPolicy: Always
+        - name: order
+          image: order:latest
+          imagePullPolicy: Never
           resources:
             limits:
               memory: "1Gi"
@@ -41,6 +41,10 @@ spec:
           ports:
             - containerPort: 5000
           env:
+            - name: PAYMENT_SERVICE
+              value: "http://user-service"
+            - name: STOCK_SERVICE
+              value: "http://stock-service"
             - name: REDIS_HOST
               value: redis-master
             - name: REDIS_PORT
@@ -49,5 +53,3 @@ spec:
               value: "redis"
             - name: REDIS_DB
               value: "0"
-      imagePullSecrets:
-      - name: regcred
