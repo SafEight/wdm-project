@@ -28,17 +28,17 @@ class Stock:
                 item_data = pipe.get(item_id)
                 if not item_data:
                     pipe.unwatch()
-                    return False
+                    return False, 0
                 item = json.loads(item_data)
                 current_stock = item["amount"]
                 if current_stock < int(amount):
                     pipe.unwatch()
-                    return False
+                    return False, 0
                 item["amount"] = current_stock - int(amount)
                 pipe.multi()
                 pipe.set(item_id, json.dumps(item))
                 pipe.execute()
-                return True
+                return True, int(item["price"])
             except redis.WatchError:
                 continue
 

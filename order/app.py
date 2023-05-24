@@ -62,12 +62,19 @@ def add_item(order_id, item_id):
 @app.delete('/removeItem/<order_id>/<item_id>')
 def remove_item(order_id, item_id):
     order_json = db.get(order_id)
-    if order_json:
-        o = order_from_JSON(order_json)
-        o.remove_item(item_id)
+
+    if not order_json:
+        return "Order does not exist!", 400
+    
+    o = order_from_JSON(order_json)
+    if o.paid:
+        return "Order already paid!", 400
+
+    if o.remove_item(item_id):
         db.set(o.order_id, o.toJSON())
         return f"Removed item: {item_id}!", 200
-    return "Order does not exist!", 400
+    else:
+        return "Order does not include item!", 400
 
 
 @app.get('/find/<order_id>')
@@ -94,29 +101,19 @@ def checkout(order_id):
 
 def checkout_stock_first(order):
     # subtract stock
-    subtractedItems = []
     stockService = os.environ['STOCK_SERVICE']
-    for item in order.items:
-        # stockService = ""
-        subtract=f"{stockService}/subtract/{item}/1"
-        subtract_response = requests.post(subtract)
+    subtract_all = f"{stockService}/subtract_all"
+    subtract_all_data = {
+        "items": order.items
+    }
+    subtract_all_response = requests.post(subtract_all, json=subtract_all_data)
 
-        if subtract_response.status_code >= 400:
-
-            # rollback stock subtractions
-            for subtractedItem in subtractedItems:
-       
-                add=f"{stockService}/add/{subtractedItem}/1"
-                add_response = requests.post(add)
-                if add_response.status_code >= 400:
-                    
-                    return f"Fatal error: {add_response}", 500
-            return subtract_response.json(), subtract_response.status_code
-        
-        subtractedItems.append(item)
+    if subtract_all_response.status_code >= 400:
+        return subtract_all_response.content, subtract_all_response.status_code
+    
+    order.total_cost = subtract_all_response.json()['total_cost']
     
     # pay for order
-    # paymentService = ""
     paymentService = os.environ['PAYMENT_SERVICE']
 
     pay=f"{paymentService}/pay/{order.user_id}/{order.order_id}/{order.total_cost}"
@@ -124,12 +121,13 @@ def checkout_stock_first(order):
     if pay_response.status_code >= 400:
 
         #rollback stock subtractions
-        for item in order.items:
-            stockService = os.environ['STOCK_SERVICE']
-            add=f"{stockService}/add/{item}/1"
-            add_response = requests.post(add)
-            if add_response.status_code >= 400:
-                return f"Fatal error: {add_response}", 500
+        add_all=f"{stockService}/add_all"
+        add_all_data = {
+            "items": order.items
+        }
+        add_all_response = requests.post(add_all, json=add_all_data)
+        if add_all_response.status_code >= 400:
+            return f"Fatal error: {add_all_response}", 500
 
         return pay_response.json(), pay_response.status_code
     
