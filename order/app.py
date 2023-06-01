@@ -3,23 +3,12 @@ import atexit
 import requests
 
 from flask import Flask, jsonify
-import redis
 from orders import Order, order_from_JSON
 
 app = Flask("order-service")
 
-db: redis.Redis = redis.Redis(host=os.environ['REDIS_HOST'],
-                              port=int(os.environ['REDIS_PORT']),
-                              password=os.environ['REDIS_PASSWORD'],
-                              db=int(os.environ['REDIS_DB']))
-
 paymentService = os.environ['PAYMENT_SERVICE']
 stockService = os.environ['STOCK_SERVICE']
-
-
-def close_db_connection():
-    db.close()
-
 
 @app.get("/")
 def status():
@@ -28,26 +17,20 @@ def status():
     }
     return jsonify(data), 200
 
-
-atexit.register(close_db_connection)
-
-
 @app.post('/create/<user_id>')
 def create_order(user_id):
     o = Order(user_id)
-    db.set(o.order_id, o.toJSON())
     return jsonify({"order_id":  o.order_id}), 200
 
 
 @app.delete('/remove/<order_id>')
 def remove_order(order_id):
-    db.delete(order_id)
     return "", 200
 
 
 @app.post('/addItem/<order_id>/<item_id>')
 def add_item(order_id, item_id):
-    order_json = db.get(order_id)
+    order_json = order_id
     if not order_json:
         return "Order does not exist!", 400
     
@@ -55,13 +38,12 @@ def add_item(order_id, item_id):
     if not o.add_item(item_id):
         return "Item does not exist!", 400
     
-    db.set(o.order_id, o.toJSON())
     return f"Added item!: {item_id}", 200
 
 
 @app.delete('/removeItem/<order_id>/<item_id>')
 def remove_item(order_id, item_id):
-    order_json = db.get(order_id)
+    order_json = order_id
 
     if not order_json:
         return "Order does not exist!", 400
@@ -71,7 +53,6 @@ def remove_item(order_id, item_id):
         return "Order already paid!", 400
 
     if o.remove_item(item_id):
-        db.set(o.order_id, o.toJSON())
         return f"Removed item: {item_id}!", 200
     else:
         return "Order does not include item!", 400
@@ -79,7 +60,7 @@ def remove_item(order_id, item_id):
 
 @app.get('/find/<order_id>')
 def find_order(order_id):
-    order_json = db.get(order_id)
+    order_json = order_id
     if order_json:
         o = order_from_JSON(order_json)
         return o.toJSON(), 200
@@ -90,7 +71,7 @@ def find_order(order_id):
 def checkout(order_id):
 
     # check if order exists
-    order_json = db.get(order_id)
+    order_json = order_id
     if not order_json:
         return "Order does not exist!", 400
     
