@@ -1,6 +1,7 @@
 import uuid
 import pika
 import time
+import json 
 
 from flask import Flask, jsonify
 
@@ -11,6 +12,8 @@ channel = connection.channel()
 request_queue = "request_queue"
 response_queue = "response_queue"
 
+server_id = str(uuid.uuid4())
+
 responses = {}
 
 @app.get("/")
@@ -20,34 +23,43 @@ def status():
     }
     return jsonify(data), 200
 
+
 @app.post("/create/<user_id>")
 def create_order(user_id): 
-    return send_message_to_queue("/create/<user_id>", user_id)
+    req_body = {"server_id": server_id, "create_order": user_id}
+    return send_message_to_queue(request_body=req_body)
 
 @app.delete("/remove/<order_id>")
 def remove_order(order_id):
-    return send_message_to_queue("/remove/<order_id>", order_id)
+    req_body = {"server_id": server_id, "remove_order": order_id}
+    return send_message_to_queue(request_body=req_body)
 
 @app.post("/addItem/<order_id>/<item_id>")
 def add_item(order_id, item_id):
-    return send_message_to_queue("/addItem/<order_id>/<item_id>", {order_id, item_id})
+    req_body = {"server_id": server_id, "add_item": {order_id, item_id}}
+    return send_message_to_queue(request_body=req_body)
 
 @app.delete("/removeItem/<order_id>/<item_id>")
 def remove_item(order_id, item_id):
-    return send_message_to_queue("removeItem/<order_id>/<item_id>", {order_id, item_id})
+    req_body = {"server_id": server_id, "remove_item": {order_id, item_id}}
+    return send_message_to_queue(request_body=req_body)
 
 @app.get("/find/<order_id>")
 def find_order(order_id):
-    return send_message_to_queue("/find/<order_id>", order_id)
+    req_body = {"server_id": server_id, "find_order": order_id}
+    return send_message_to_queue(request_body=req_body)
 
 @app.post("/checkout/<order_id>")
 def checkout(order_id):
-    return send_message_to_queue("/checkout/<order_id>", order_id)
+    req_body = {"server_id": server_id, "checkout": order_id}
+    return send_message_to_queue(request_body=req_body)
+
 
 def send_message_to_queue(request_body):
     request_id = str(uuid.uuid4())
+    request_body["request_id"] = request_id
 
-    channel.basic_publish(exchange="", routing_key=request_queue, body={request_id, request_body})
+    channel.basic_publish(exchange="", routing_key=request_queue, body=json.dumps(request_body))
 
     response = wait_for_response(request_id)
 

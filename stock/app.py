@@ -1,6 +1,7 @@
 import uuid
 import pika
 import time
+import json
 
 from flask import Flask, jsonify
 
@@ -55,9 +56,9 @@ def remove_all_stock():
 
 def send_message_to_queue(request_body):
     request_id = str(uuid.uuid4())
-    request_body["request_id": request_id]
+    request_body["request_id"] = request_id
 
-    channel.basic_publish(exchange='', routing_key=request_queue, body={request_id, request_body})
+    channel.basic_publish(exchange='', routing_key=request_queue, body=json.dumps(request_body))
 
     response = wait_for_response(request_id)
 
