@@ -1,15 +1,18 @@
-import time
 import uuid
 import pika
+import time
 
 from flask import Flask, jsonify
 
 app = Flask("payment-service")
-connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
 channel = connection.channel()
 
 request_queue = "request_queue"
 response_queue = "response_queue"
+
+responses = {}
+
 
 responses = {}
 

@@ -1,10 +1,19 @@
-import os
-import atexit
-import json
+import uuid
+import pika
+import time
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 
 app = Flask("stock-service")
+connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
+channel = connection.channel()
+
+request_queue = "request_queue"
+response_queue = "response_queue"
+
+server_id = str(uuid.uuid4())
+
+responses = {}
 
 @app.get("/")
 def status():
@@ -16,24 +25,64 @@ def status():
 
 @app.post('/item/create/<price>')
 def create_item(price: int):
-    return 0
+    req_body = {"server_id": server_id, "create_item": price}
+    return send_message_to_queue(request_body=req_body)
 
 @app.get('/find/<item_id>')
 def find_item(item_id: str):
-    return 0
+    req_body = {"server_id": server_id, "find_item": item_id}
+    return send_message_to_queue(request_body=req_body)
 
 @app.post('/add/<item_id>/<amount>')
 def add_stock(item_id: str, amount: int):
-    return 0    
+    req_body = {"server_id": server_id, "add_stock": {item_id, amount}}
+    return send_message_to_queue(request_body=req_body)    
     
 @app.post('/add_all')
 def add_all_stock():
-    return 0
+    req_body = {"server_id": server_id, "add_all_stock": ""}
+    return send_message_to_queue(request_body=req_body)
 
 @app.post('/subtract/<item_id>/<amount>')
 def remove_stock(item_id: str, amount: int):
-    return 0
+    req_body = {"server_id": server_id, "remove_stock": {item_id, amount}}
+    return send_message_to_queue(request_body=req_body)
 
 @app.post('/subtract_all')
 def remove_all_stock():
-    return 0
+    req_body = {"server_id": server_id, "remove_all_stock": ""}
+    return send_message_to_queue(request_body=req_body)
+
+def send_message_to_queue(request_body):
+    request_id = str(uuid.uuid4())
+    request_body["request_id": request_id]
+
+    channel.basic_publish(exchange='', routing_key=request_queue, body={request_id, request_body})
+
+    response = wait_for_response(request_id)
+
+    if response:
+        return jsonify(response)
+    else:
+        return jsonify({'error': 'Timeout occurred'}), 500
+
+def wait_for_response(request_id):
+    start_time = time.time()
+    timeout = 0.35
+
+    while time.time() - start_time < timeout:
+        if request_id in responses:
+            return responses.pop(request_id)
+
+        time.sleep(0.01)
+
+    return None
+
+def handle_message(channel, method, properties, body):
+    request_id = body.decode()
+    responses[request_id] = {"msg": "Succesful response"}
+
+    channel.basic_ack(delivery_tag=method.delivery_tag)
+
+channel.queue_declare(queue=response_queue)
+channel.basic_consume(queue=response_queue, on_message_callback=handle_message)
