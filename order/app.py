@@ -1,6 +1,3 @@
-import os
-import atexit
-import requests
 import uuid
 import pika
 import time
@@ -8,7 +5,7 @@ import time
 from flask import Flask, jsonify
 
 app = Flask("order-service")
-connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
 channel = connection.channel()
 
 request_queue = "request_queue"
@@ -23,41 +20,41 @@ def status():
     }
     return jsonify(data), 200
 
-@app.post('/create/<user_id>')
+@app.post("/create/<user_id>")
 def create_order(user_id): 
     return send_message_to_queue("/create/<user_id>", user_id)
 
-@app.delete('/remove/<order_id>')
+@app.delete("/remove/<order_id>")
 def remove_order(order_id):
     return send_message_to_queue("/remove/<order_id>", order_id)
 
-@app.post('/addItem/<order_id>/<item_id>')
+@app.post("/addItem/<order_id>/<item_id>")
 def add_item(order_id, item_id):
     return send_message_to_queue("/addItem/<order_id>/<item_id>", {order_id, item_id})
 
-@app.delete('/removeItem/<order_id>/<item_id>')
+@app.delete("/removeItem/<order_id>/<item_id>")
 def remove_item(order_id, item_id):
     return send_message_to_queue("removeItem/<order_id>/<item_id>", {order_id, item_id})
 
-@app.get('/find/<order_id>')
+@app.get("/find/<order_id>")
 def find_order(order_id):
     return send_message_to_queue("/find/<order_id>", order_id)
 
-@app.post('/checkout/<order_id>')
+@app.post("/checkout/<order_id>")
 def checkout(order_id):
     return send_message_to_queue("/checkout/<order_id>", order_id)
 
 def send_message_to_queue(request_body):
     request_id = str(uuid.uuid4())
 
-    channel.basic_publish(exchange='', routing_key=request_queue, body={request_id, request_body})
+    channel.basic_publish(exchange="", routing_key=request_queue, body={request_id, request_body})
 
     response = wait_for_response(request_id)
 
     if response:
         return jsonify(response)
     else:
-        return jsonify({'error': 'Timeout occurred'}), 500
+        return jsonify({"error": "Timeout occurred"}), 500
 
 def wait_for_response(request_id):
     start_time = time.time()
