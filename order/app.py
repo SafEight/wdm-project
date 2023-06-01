@@ -26,32 +26,32 @@ def status():
 
 @app.post("/create/<user_id>")
 def create_order(user_id): 
-    req_body = {"server_id": server_id, "create_order": user_id}
+    req_body = {"server_id": server_id, "method": "create_order", "values": {"user_id": user_id}}
     return send_message_to_queue(request_body=req_body)
 
 @app.delete("/remove/<order_id>")
 def remove_order(order_id):
-    req_body = {"server_id": server_id, "remove_order": order_id}
+    req_body = {"server_id": server_id, "method": "remove_order", "values": {"order_id": order_id}}
     return send_message_to_queue(request_body=req_body)
 
 @app.post("/addItem/<order_id>/<item_id>")
 def add_item(order_id, item_id):
-    req_body = {"server_id": server_id, "add_item": {order_id, item_id}}
+    req_body = {"server_id": server_id, "method": "add_item", "values": {"order_id": order_id, "item_id": item_id}}
     return send_message_to_queue(request_body=req_body)
 
 @app.delete("/removeItem/<order_id>/<item_id>")
 def remove_item(order_id, item_id):
-    req_body = {"server_id": server_id, "remove_item": {order_id, item_id}}
+    req_body = {"server_id": server_id, "method": "remove_item", "values": {"order_id": order_id, "item_id": item_id}}
     return send_message_to_queue(request_body=req_body)
 
 @app.get("/find/<order_id>")
 def find_order(order_id):
-    req_body = {"server_id": server_id, "find_order": order_id}
+    req_body = {"server_id": server_id, "method": "find_order", "values": {"order_id": order_id}}
     return send_message_to_queue(request_body=req_body)
 
 @app.post("/checkout/<order_id>")
 def checkout(order_id):
-    req_body = {"server_id": server_id, "checkout": order_id}
+    req_body = {"server_id": server_id, "method": "checkout", "values": {"order_id": order_id}}
     return send_message_to_queue(request_body=req_body)
 
 

@@ -19,39 +19,39 @@ responses = {}
 @app.get("/")
 def status():
     data = {
-        "msg": "Success stock is online"
+        "msg": "Success stock/ is online"
     }
     return jsonify(data), 200
 
 
 @app.post('/item/create/<price>')
 def create_item(price: int):
-    req_body = {"server_id": server_id, "create_item": price}
+    req_body = {"server_id": server_id, "method": "create_item", "values": {"price": price}}
     return send_message_to_queue(request_body=req_body)
 
 @app.get('/find/<item_id>')
 def find_item(item_id: str):
-    req_body = {"server_id": server_id, "find_item": item_id}
+    req_body = {"server_id": server_id, "method": "find_item", "values": {"item_id": item_id}}
     return send_message_to_queue(request_body=req_body)
 
 @app.post('/add/<item_id>/<amount>')
 def add_stock(item_id: str, amount: int):
-    req_body = {"server_id": server_id, "add_stock": {item_id, amount}}
+    req_body = {"server_id": server_id, "method": "add_stock", "values": {"item_id": item_id, "amount": amount}}
     return send_message_to_queue(request_body=req_body)    
     
 @app.post('/add_all')
 def add_all_stock():
-    req_body = {"server_id": server_id, "add_all_stock": ""}
+    req_body = {"server_id": server_id, "method": "add_all_stock", "values": ""}
     return send_message_to_queue(request_body=req_body)
 
 @app.post('/subtract/<item_id>/<amount>')
 def remove_stock(item_id: str, amount: int):
-    req_body = {"server_id": server_id, "remove_stock": {item_id, amount}}
+    req_body = {"server_id": server_id, "method": "remove_stock", "values": {"item_id": item_id, "amount": amount}}
     return send_message_to_queue(request_body=req_body)
 
 @app.post('/subtract_all')
 def remove_all_stock():
-    req_body = {"server_id": server_id, "remove_all_stock": ""}
+    req_body = {"server_id": server_id, "method": "remove_all_stock", "values": ""}
     return send_message_to_queue(request_body=req_body)
 
 def send_message_to_queue(request_body):

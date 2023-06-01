@@ -19,39 +19,39 @@ responses = {}
 @app.get("/")
 def status():
     data = {
-        "msg": "Success /payment is online"
+        "msg": "Success payment/ is online"
     }
     return jsonify(data), 200
 
 
 @app.post("/create_user")
 def create_user():
-    req_body = {"server_id": server_id, "create_user": ""}
+    req_body = {"server_id": server_id, "method": "create_user", "values": ""}
     return send_message_to_queue(request_body=req_body)
 
 @app.get("/find_user/<user_id>")
 def find_user(user_id: str):
-    req_body = {"server_id": server_id, "find_user": user_id}
+    req_body = {"server_id": server_id, "method": "find_user", "values": {"user_id": user_id}}
     return send_message_to_queue(request_body=req_body)
 
 @app.post("/add_funds/<user_id>/<amount>")
 def add_credit(user_id: str, amount: int):
-    req_body = {"server_id": server_id, "add_credit": {user_id, amount}}
+    req_body = {"server_id": server_id, "method": "add_credit", "values": {"user_id": user_id, "amount": amount}}
     return send_message_to_queue(request_body=req_body)
 
 @app.post("/pay/<user_id>/<order_id>/<amount>")
 def remove_credit(user_id: str, order_id: str, amount: int):
-    req_body = {"server_id": server_id, "remove_credit": {user_id, order_id, amount}}
+    req_body = {"server_id": server_id, "method": "remove_credit", "values": {"user_id": user_id, "order_id": order_id, "amount": amount}}
     return send_message_to_queue(request_body=req_body)
 
 @app.post("/cancel/<user_id>/<order_id>")
 def cancel_payment(user_id: str, order_id: str):
-    req_body = {"server_id": server_id, "cancel_payment": {user_id, order_id}}
+    req_body = {"server_id": server_id, "method": "cancel_payment", "values": {"user_id": user_id, "order_id": order_id}}
     return send_message_to_queue(request_body=req_body)
 
 @app.post("/status/<user_id>/<order_id>")
 def payment_status(user_id: str, order_id: str):
-    req_body = {"server_id": server_id, "payment_status": {user_id, order_id}}
+    req_body = {"server_id": server_id, "method": "payment_status", "values": {"user_id": user_id, "order_id": order_id}}
     return send_message_to_queue(request_body=req_body)
 
 def send_message_to_queue(request_body):
