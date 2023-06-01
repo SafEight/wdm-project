@@ -15,3 +15,6 @@ replica:
   #   requests:
   #     memory: 4Gi
   #     cpu: 2
+cluster:
+  enabled: true
+  slaveCount: 2
