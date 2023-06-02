@@ -1,25 +1,20 @@
-import os
-import atexit
-import requests
+import uuid
+import pika
+import time
+import json 
 
 from flask import Flask, jsonify
-import redis
-from orders import Order, order_from_JSON
 
 app = Flask("order-service")
+connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
+channel = connection.channel()
 
-db: redis.Redis = redis.Redis(host=os.environ['REDIS_HOST'],
-                              port=int(os.environ['REDIS_PORT']),
-                              password=os.environ['REDIS_PASSWORD'],
-                              db=int(os.environ['REDIS_DB']))
+request_queue = "request_queue"
+response_queue = "response_queue"
 
-paymentService = os.environ['PAYMENT_SERVICE']
-stockService = os.environ['STOCK_SERVICE']
+server_id = str(uuid.uuid4())
 
-
-def close_db_connection():
-    db.close()
-
+responses = {}
 
 @app.get("/")
 def status():
@@ -29,146 +24,67 @@ def status():
     return jsonify(data), 200
 
 
-atexit.register(close_db_connection)
+@app.post("/create/<user_id>")
+def create_order(user_id): 
+    req_body = {"server_id": server_id, "method": "create_order", "values": {"user_id": user_id}}
+    return send_message_to_queue(request_body=req_body)
 
-
-@app.post('/create/<user_id>')
-def create_order(user_id):
-    o = Order(user_id)
-    db.set(o.order_id, o.toJSON())
-    return jsonify({"order_id":  o.order_id}), 200
-
-
-@app.delete('/remove/<order_id>')
+@app.delete("/remove/<order_id>")
 def remove_order(order_id):
-    db.delete(order_id)
-    return "", 200
+    req_body = {"server_id": server_id, "method": "remove_order", "values": {"order_id": order_id}}
+    return send_message_to_queue(request_body=req_body)
 
-
-@app.post('/addItem/<order_id>/<item_id>')
+@app.post("/addItem/<order_id>/<item_id>")
 def add_item(order_id, item_id):
-    order_json = db.get(order_id)
-    if not order_json:
-        return "Order does not exist!", 400
-    
-    o = order_from_JSON(order_json)
-    if not o.add_item(item_id):
-        return "Item does not exist!", 400
-    
-    db.set(o.order_id, o.toJSON())
-    return f"Added item!: {item_id}", 200
+    req_body = {"server_id": server_id, "method": "add_item", "values": {"order_id": order_id, "item_id": item_id}}
+    return send_message_to_queue(request_body=req_body)
 
-
-@app.delete('/removeItem/<order_id>/<item_id>')
+@app.delete("/removeItem/<order_id>/<item_id>")
 def remove_item(order_id, item_id):
-    order_json = db.get(order_id)
+    req_body = {"server_id": server_id, "method": "remove_item", "values": {"order_id": order_id, "item_id": item_id}}
+    return send_message_to_queue(request_body=req_body)
 
-    if not order_json:
-        return "Order does not exist!", 400
-    
-    o = order_from_JSON(order_json)
-    if o.paid:
-        return "Order already paid!", 400
-
-    if o.remove_item(item_id):
-        db.set(o.order_id, o.toJSON())
-        return f"Removed item: {item_id}!", 200
-    else:
-        return "Order does not include item!", 400
-
-
-@app.get('/find/<order_id>')
+@app.get("/find/<order_id>")
 def find_order(order_id):
-    order_json = db.get(order_id)
-    if order_json:
-        o = order_from_JSON(order_json)
-        return o.toJSON(), 200
-    return "Order does not exist!", 400
+    req_body = {"server_id": server_id, "method": "find_order", "values": {"order_id": order_id}}
+    return send_message_to_queue(request_body=req_body)
 
-
-@app.post('/checkout/<order_id>')
+@app.post("/checkout/<order_id>")
 def checkout(order_id):
+    req_body = {"server_id": server_id, "method": "checkout", "values": {"order_id": order_id}}
+    return send_message_to_queue(request_body=req_body)
 
-    # check if order exists
-    order_json = db.get(order_id)
-    if not order_json:
-        return "Order does not exist!", 400
-    
-    order = order_from_JSON(order_json)
 
-    return checkout_stock_first(order)
-    # return checkout_payment_first(order)
+def send_message_to_queue(request_body):
+    request_id = str(uuid.uuid4())
+    request_body["request_id"] = request_id
 
-def checkout_stock_first(order):
-    # subtract stock
-    stockService = os.environ['STOCK_SERVICE']
-    subtract_all = f"{stockService}/subtract_all"
-    subtract_all_data = {
-        "items": order.items
-    }
-    subtract_all_response = requests.post(subtract_all, json=subtract_all_data)
+    channel.basic_publish(exchange="", routing_key=request_queue, body=json.dumps(request_body))
 
-    if subtract_all_response.status_code >= 400:
-        return subtract_all_response.content, subtract_all_response.status_code
-    
-    order.total_cost = subtract_all_response.json()['total_cost']
-    
-    # pay for order
-    paymentService = os.environ['PAYMENT_SERVICE']
+    response = wait_for_response(request_id)
 
-    pay=f"{paymentService}/pay/{order.user_id}/{order.order_id}/{order.total_cost}"
-    pay_response = requests.post(pay)
-    if pay_response.status_code >= 400:
+    if response:
+        return jsonify(response)
+    else:
+        return jsonify({"error": "Timeout occurred"}), 500
 
-        #rollback stock subtractions
-        add_all=f"{stockService}/add_all"
-        add_all_data = {
-            "items": order.items
-        }
-        add_all_response = requests.post(add_all, json=add_all_data)
-        if add_all_response.status_code >= 400:
-            return f"Fatal error: {add_all_response}", 500
+def wait_for_response(request_id):
+    start_time = time.time()
+    timeout = 0.35
 
-        return pay_response.json(), pay_response.status_code
-    
-    return "Successful order!", 200
+    while time.time() - start_time < timeout:
+        if request_id in responses:
+            return responses.pop(request_id)
 
-def checkout_payment_first(order):
+        time.sleep(0.01)
 
-    # pay for order
-    pay=f"{paymentService}/pay/{order.user_id}/{order.order_id}/{order.total_cost}"
-    pay_response = requests.post(pay).json()
-    if pay_response.status_code >= 400:
-        return pay_response
+    return None
 
-    # subtract stock
-    subtractedItems = []
-    for item in order.items:
-        subtract=f"{stockService}/subtract/{item}/1"
-        subtract_response = requests.post(subtract).json()
-        print("*************", flush=True)    
-        print(order, flush=True)
-        print("*************", flush=True)    
-        print(subtract_response.json(), flush=True)
-        print("*************", flush=True)
-        if subtract_response.status_code >= 400:
+def handle_message(channel, method, properties, body):
+    request_id = body.decode()
+    responses[request_id] = {"msg": "Succesful response"}
 
-            # cancel payment
-            cancel=f"{paymentService}/cancel/{order.user_id}/{order.order_id}"
-            cancel_response = requests.post(cancel
-                                            ).json()
-            if cancel_response.status_code >= 400:
-                return f"Fatal error: {cancel_response}", 500
+    channel.basic_ack(delivery_tag=method.delivery_tag)
 
-            # rollback stock subtractions
-            for subtractedItem in subtractedItems:
-                add=f"{stockService}/add/{subtractedItem}/1"
-                add_response = requests.post(add).json()
-                if add_response.status_code >= 400:
-                    return f"Fatal error: {add_response}", 500
-            
-            return subtract_response
-        
-        subtractedItems.append(item)
-    
-    return "Successful order!", 200
+channel.queue_declare(queue=response_queue)
+channel.basic_consume(queue=response_queue, on_message_callback=handle_message)

@@ -1,91 +1,89 @@
-import os
-import atexit
+import uuid
+import pika
+import time
 import json
 
-from flask import Flask, jsonify, request
-import redis
-from stock import Stock
-
+from flask import Flask, jsonify
 
 app = Flask("stock-service")
+connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
+channel = connection.channel()
 
-db: redis.Redis = redis.Redis(host=os.environ['REDIS_HOST'],
-                              port=int(os.environ['REDIS_PORT']),
-                              password=os.environ['REDIS_PASSWORD'],
-                              db=int(os.environ['REDIS_DB']))
+request_queue = "request_queue"
+response_queue = "response_queue"
 
+server_id = str(uuid.uuid4())
 
-def close_db_connection():
-    db.close()
-
-
-atexit.register(close_db_connection)
-
-stock = Stock(db)
+responses = {}
 
 @app.get("/")
 def status():
     data = {
-        "msg": "Success stock is online"
+        "msg": "Success stock/ is online"
     }
     return jsonify(data), 200
 
 
 @app.post('/item/create/<price>')
 def create_item(price: int):
-    item_id = stock.create(price)
-    return jsonify({"item_id": item_id}), 200
-
+    req_body = {"server_id": server_id, "method": "create_item", "values": {"price": price}}
+    return send_message_to_queue(request_body=req_body)
 
 @app.get('/find/<item_id>')
 def find_item(item_id: str):
-    item = stock.find(item_id)
-    if item:
-        return jsonify(json.loads(item)), 200
-    else:
-        return jsonify({"error": "Item not found!"}), 400
+    req_body = {"server_id": server_id, "method": "find_item", "values": {"item_id": item_id}}
+    return send_message_to_queue(request_body=req_body)
 
 @app.post('/add/<item_id>/<amount>')
 def add_stock(item_id: str, amount: int):
-    added = stock.add(item_id, amount)
-    if added:
-        return jsonify({"msg": "Stock added"}), 200
-    else:
-        return jsonify({"error": "Item not found!"}), 400
+    req_body = {"server_id": server_id, "method": "add_stock", "values": {"item_id": item_id, "amount": amount}}
+    return send_message_to_queue(request_body=req_body)    
     
 @app.post('/add_all')
 def add_all_stock():
-    items = request.json["items"]
-    for item in items:
-        added = stock.add(item, 1)
-        if not added:
-            return jsonify({"error": f"Item {item} not found!"}), 400
-    return "All items added!", 200
+    req_body = {"server_id": server_id, "method": "add_all_stock", "values": ""}
+    return send_message_to_queue(request_body=req_body)
 
 @app.post('/subtract/<item_id>/<amount>')
 def remove_stock(item_id: str, amount: int):
-    removed, _ = stock.subtract(item_id, amount)
-    if removed:
-        return jsonify({"msg": "Stock removed"}), 200
-    else:
-        return jsonify({"error": "Insufficient stock or item not found!"}), 400
+    req_body = {"server_id": server_id, "method": "remove_stock", "values": {"item_id": item_id, "amount": amount}}
+    return send_message_to_queue(request_body=req_body)
 
 @app.post('/subtract_all')
 def remove_all_stock():
-    items = request.json["items"]
-    subtracted_items = []
-    total_cost = 0
-    for item in items:
-        removed, price = stock.subtract(item, 1)
+    req_body = {"server_id": server_id, "method": "remove_all_stock", "values": ""}
+    return send_message_to_queue(request_body=req_body)
 
-        if not removed:
-            # Rollback subtractions
-            for sub_item in subtracted_items:
-                add_stock(sub_item, 1)
+def send_message_to_queue(request_body):
+    request_id = str(uuid.uuid4())
+    request_body["request_id"] = request_id
 
-            return jsonify({"error": f"Insufficient stock or item not found! Item id: {item}."}), 400
-        
-        total_cost += price
-        subtracted_items.append(item)
-    
-    return jsonify({"total_cost": total_cost}), 200
+    channel.basic_publish(exchange='', routing_key=request_queue, body=json.dumps(request_body))
+
+    response = wait_for_response(request_id)
+
+    if response:
+        return jsonify(response)
+    else:
+        return jsonify({'error': 'Timeout occurred'}), 500
+
+def wait_for_response(request_id):
+    start_time = time.time()
+    timeout = 0.35
+
+    while time.time() - start_time < timeout:
+        if request_id in responses:
+            return responses.pop(request_id)
+
+        time.sleep(0.01)
+
+    return None
+
+def handle_message(channel, method, properties, body):
+    request_id = body.decode()
+    responses[request_id] = {"msg": "Succesful response"}
+
+    channel.basic_ack(delivery_tag=method.delivery_tag)
+
+channel.queue_declare(queue=response_queue)
+channel.basic_consume(queue=response_queue, on_message_callback=handle_message)
