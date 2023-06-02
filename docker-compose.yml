@@ -54,12 +54,44 @@ services:
     ports:
       - "5003:6379"
 
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: 'rabbitmq'
+  rmq:
+    container_name: rmq
+    image: 'rabbitmq:3.10-management'
     ports:
-        - 5672:5672
-        - 15672:15672
-    volumes:
-        - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
-        - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+      - 5672:5672
+      - 15672:15672
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "rabbitmq-diagnostics check_port_listener 5672"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  order-service-test:
+    container_name: order-service-test
+    build: ./order-service
+    env_file:
+      - env/order_redis.env
+    depends_on:
+      rmq:
+        condition: service_healthy
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq
+
+  payment-service-test:
+    container_name: payment-service-test
+    build: ./payment-service
+    env_file:
+      - env/payment_redis.env
+    depends_on:
+      rmq:
+        condition: service_healthy
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq
