@@ -2,8 +2,7 @@ from time import sleep
 from sender import Sender
 import pika
 import os
-from payment_service import PaymentService, PaymentServiceFunctions
-
+from stock_service import StockService, StockServiceFunctions
 from message import Message
 
 host = os.environ["RMQ_HOST"]
@@ -54,14 +53,14 @@ class Consumer:
 
 if __name__ == "__main__":
     consumer = Consumer(
-        queue_name="payment_service",
-        output_queue_name="payment_proxy",
+        queue_name="stock_service",
+        output_queue_name="stock_proxy",
         host=host,
-        ServiceClass=PaymentService,
-        ServiceFunctions=PaymentServiceFunctions,
+        ServiceClass=StockService,
+        ServiceFunctions=StockServiceFunctions,
     )
     consumer.channel.basic_consume(
         queue=consumer.queue_name, on_message_callback=consumer.callback, auto_ack=True
     )
-    print(" [*] Waiting for messages. To exit press CTRL+C")
+    print("[*] Waiting for messages. To exit press CTRL+C")
     consumer.channel.start_consuming()

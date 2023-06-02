@@ -95,3 +95,16 @@ services:
       - rmq
     environment:
       - RMQ_HOST=rmq
+
+  stock-service-test:
+    container_name: stock-service-test
+    build: ./stock-service
+    env_file:
+      - env/stock_redis.env
+    depends_on:
+      rmq:
+        condition: service_healthy
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq

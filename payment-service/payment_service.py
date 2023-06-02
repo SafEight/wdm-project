@@ -33,7 +33,8 @@ class PaymentService:
     @PaymentServiceFunctions.register("create_user")
     def create_user(self, user_id=None):
         user = User()
-        self.db.set(user.toJSON())
+        print(user.toJSON())
+        self.db.set(user.user_id, user.toJSON())
         return True, user.user_id
 
     @PaymentServiceFunctions.register("find_user")
