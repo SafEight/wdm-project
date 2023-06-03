@@ -15,10 +15,11 @@ class Sender:
 
     def send_message(self, message: Message):
         try:
+            print("Sending message: {}".format(message), flush=True)
             self.channel.basic_publish(
-                exchange="", routing_key=self.queue_name, body=message.toJson()
+                exchange="", routing_key=self.queue_name, body=message
             )
             return True
         except Exception as e:
-            print("Error while sending message: {}".format(e))
+            print("Error while sending message: {}".format(e), flush=True)
             return False

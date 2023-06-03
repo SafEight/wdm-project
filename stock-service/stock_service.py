@@ -30,7 +30,7 @@ class StockService:
     def close_db_connection(self):
         self.db.close()
 
-    @StockServiceFunctions.register("create_user")
+    @StockServiceFunctions.register("create_item")
     def create_item(self, price=None):
         item = Item(price)
         self.db.set(item.item_id, item.toJSON())
