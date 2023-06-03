@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
         - name: order
-          image: gasparinorocha/wdm-order:0.0.1
+          image: gasparinorocha/wdm-order:latest
           imagePullPolicy: Always
           resources:
             limits:

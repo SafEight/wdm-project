@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
         - name: user
-          image: gasparinorocha/wdm-payment:0.0.1
+          image: gasparinorocha/wdm-payment:latest
           imagePullPolicy: Always
           resources:
             limits:

@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
         - name: stock
-          image: gasparinorocha/wdm-stock:0.0.1
+          image: gasparinorocha/wdm-stock:latest
           imagePullPolicy: Always
           resources:
             limits:
