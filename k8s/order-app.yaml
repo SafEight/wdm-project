@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
         - name: order
-          image: gasparinorocha/wdm-order:latest
+          image: gasparinorocha/wdm-order:0.0.2
           imagePullPolicy: Always
           resources:
             limits:
@@ -42,9 +42,9 @@ spec:
             - containerPort: 5000
           env:
             - name: PAYMENT_SERVICE
-              value: "http://user-service"
+              value: "http://user-service:5000"
             - name: STOCK_SERVICE
-              value: "http://stock-service"
+              value: "http://stock-service:5000"
             - name: REDIS_HOST
               value: redis-order-s
             - name: REDIS_PORT
