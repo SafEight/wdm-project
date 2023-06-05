@@ -36,45 +36,47 @@ class TestMicroservices(unittest.TestCase):
         stock_after_subtract: int = tu.find_item(item_id)["stock"]
         self.assertEqual(stock_after_subtract, 35)
 
-    # def test_payment(self):
-    #     # Test /payment/pay/<user_id>/<order_id>
-    #     user: dict = tu.create_user()
-    #     self.assertTrue("user_id" in user)
+    def test_payment(self):
+        # Test /payment/pay/<user_id>/<order_id>
+        user: dict = tu.create_user()
+        self.assertTrue("user_id" in user)
 
-    #     user_id: str = user["user_id"]
+        user_id: str = user["user_id"]
 
-    #     # Test /users/credit/add/<user_id>/<amount>
-    #     add_credit_response = tu.add_credit_to_user(user_id, 15)
-    #     self.assertTrue(tu.status_code_is_success(add_credit_response))
+        # Test /users/credit/add/<user_id>/<amount>
+        add_credit_response = tu.add_credit_to_user(user_id, 15)
+        self.assertTrue(
+            tu.status_code_is_success(add_credit_response), msg=add_credit_response
+        )
 
-    #     # add item to the stock service
-    #     item: dict = tu.create_item(5)
-    #     self.assertTrue("item_id" in item)
+        # add item to the stock service
+        item: dict = tu.create_item(5)
+        self.assertTrue("item_id" in item)
 
-    #     item_id: str = item["item_id"]
+        item_id: str = item["item_id"]
 
-    #     add_stock_response = tu.add_stock(item_id, 50)
-    #     self.assertTrue(tu.status_code_is_success(add_stock_response))
+        add_stock_response = tu.add_stock(item_id, 50)
+        self.assertTrue(tu.status_code_is_success(add_stock_response))
 
-    #     # create order in the order service and add item to the order
-    #     order: dict = tu.create_order(user_id)
-    #     self.assertTrue("order_id" in order)
+        # create order in the order service and add item to the order
+        # order: dict = tu.create_order(user_id)
+        # self.assertTrue("order_id" in order)
 
-    #     order_id: str = order["order_id"]
+        # order_id: str = order["order_id"]
 
-    #     add_item_response = tu.add_item_to_order(order_id, item_id)
-    #     self.assertTrue(tu.status_code_is_success(add_item_response))
+        # add_item_response = tu.add_item_to_order(order_id, item_id)
+        # self.assertTrue(tu.status_code_is_success(add_item_response))
 
-    #     add_item_response = tu.add_item_to_order(order_id, item_id)
-    #     self.assertTrue(tu.status_code_is_success(add_item_response))
-    #     add_item_response = tu.add_item_to_order(order_id, item_id)
-    #     self.assertTrue(tu.status_code_is_success(add_item_response))
+        # add_item_response = tu.add_item_to_order(order_id, item_id)
+        # self.assertTrue(tu.status_code_is_success(add_item_response))
+        # add_item_response = tu.add_item_to_order(order_id, item_id)
+        # self.assertTrue(tu.status_code_is_success(add_item_response))
 
-    #     payment_response = tu.payment_pay(user_id, order_id, 10)
-    #     self.assertTrue(tu.status_code_is_success(payment_response))
+        payment_response = tu.payment_pay(user_id, 8, 10)
+        self.assertTrue(tu.status_code_is_success(payment_response))
 
-    #     credit_after_payment: int = tu.find_user(user_id)["credit"]
-    #     self.assertEqual(credit_after_payment, 5)
+        credit_after_payment: int = tu.find_user(user_id)["credit"]
+        self.assertEqual(credit_after_payment, 5)
 
     # def test_order(self):
     #     # Test /payment/pay/<user_id>/<order_id>

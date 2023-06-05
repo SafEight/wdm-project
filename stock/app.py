@@ -5,16 +5,13 @@ import time
 import json
 import os
 from connection import QueueHandler
-from flask import Flask, jsonify
-from threading import Thread
 from http import HTTPStatus
-from quart import Quart, make_response, jsonify, Response
+from quart import Quart, make_response, jsonify
 
 host = os.environ["RMQ_HOST"]
 
 app = Quart("stock-service")
 outgoing_queue = "stock_service"
-incoming_queue = "stock_proxy"
 server_id = str(uuid.uuid4())
 loop = asyncio.get_running_loop()
 queue_handler = QueueHandler(server_id, outgoing_queue)
@@ -47,7 +44,7 @@ async def find_item(item_id: str):
 
 
 @app.post("/add/<item_id>/<amount>")
-async def add_stock(item_id: str, amount: int):
+async def add_funds(item_id: str, amount: int):
     req_body = {
         "server_id": server_id,
         "method_name": "add_stock",

@@ -5,22 +5,24 @@ import uuid
 class User:
     def __init__(
         self,
+        user_id,
+        credit,
     ):
-        self.user_id = str(uuid.uuid4())
-        self.funds = 0
+        self.user_id = user_id
+        self.credit = int(credit)
 
     def toJSON(self):
         return json.dumps(self.__dict__)
 
     def add_funds(self, amount):
-        self.funds += amount
+        self.credit += int(amount)
         return True
 
     def pay(self, amount):
         try:
-            if self.funds - amount < 0:
+            if self.credit - int(amount) < 0:
                 return False
-            self.funds -= amount
+            self.credit -= int(amount)
             return True
         except ValueError as ve:
             return False

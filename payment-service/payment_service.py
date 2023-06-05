@@ -8,6 +8,7 @@ DB = redis.Redis(
     port=int(os.environ["REDIS_PORT"]),
     password=os.environ["REDIS_PASSWORD"],
     db=int(os.environ["REDIS_DB"]),
+    decode_responses=True,
 )
 
 
@@ -31,11 +32,12 @@ class PaymentService:
         self.db.close()
 
     @PaymentServiceFunctions.register("create_user")
-    def create_user(self, user_id=None):
-        user = User()
+    def create_user(self):
+        user_id = str(uuid.uuid4())
+        user = User(user_id=user_id, credit=0)
         print(user.toJSON())
         self.db.set(user.user_id, user.toJSON())
-        return True, user.user_id
+        return True, user.toJSON()
 
     @PaymentServiceFunctions.register("find_user")
     def find_user(self, user_id=None):
@@ -46,6 +48,7 @@ class PaymentService:
 
     @PaymentServiceFunctions.register("add_funds")
     def add_funds(self, user_id=None, amount=None):
+        amount = int(amount)
         user_json = self.db.get(user_id)
         if not user_json:
             return False, "User does not exist!"
@@ -55,7 +58,8 @@ class PaymentService:
         return True, f"Added funds!: {amount}"
 
     @PaymentServiceFunctions.register("pay")
-    def pay(self, user_id=None, amount=None):
+    def pay(self, user_id=None, order_id=None, amount=None):
+        amount = int(amount)
         user_json = self.db.get(user_id)
         if not user_json:
             return False, "User does not exist!"
