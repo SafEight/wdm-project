@@ -1,23 +1,23 @@
 import uuid
-import pika
+import aio_pika
+import asyncio
 import time
 import json
 import os
+from connection import QueueHandler
 from flask import Flask, jsonify
+from threading import Thread
+from http import HTTPStatus
+from quart import Quart, make_response, jsonify, Response
 
 host = os.environ["RMQ_HOST"]
 
-
-app = Flask("stock-service")
-connection = pika.BlockingConnection(pika.ConnectionParameters(host))
-channel = connection.channel()
-
-request_queue = "stock_service"
-response_queue = "stock_proxy"
-
+app = Quart("stock-service")
+outgoing_queue = "stock_service"
+incoming_queue = "stock_proxy"
 server_id = str(uuid.uuid4())
-
-responses = {}
+loop = asyncio.get_running_loop()
+queue_handler = QueueHandler(server_id, outgoing_queue)
 
 
 @app.get("/")
@@ -27,95 +27,90 @@ def status():
 
 
 @app.post("/item/create/<price>")
-def create_item(price: int):
+async def create_item(price: int):
     req_body = {
         "server_id": server_id,
         "method_name": "create_item",
         "params": {"price": price},
     }
-    return send_message_to_queue(request_body=req_body)
+    return await send_message_to_queue(request_body=req_body)
 
 
 @app.get("/find/<item_id>")
-def find_item(item_id: str):
+async def find_item(item_id: str):
     req_body = {
         "server_id": server_id,
         "method_name": "find_item",
         "params": {"item_id": item_id},
     }
-    return send_message_to_queue(request_body=req_body)
+    return await send_message_to_queue(request_body=req_body)
 
 
 @app.post("/add/<item_id>/<amount>")
-def add_stock(item_id: str, amount: int):
+async def add_stock(item_id: str, amount: int):
     req_body = {
         "server_id": server_id,
         "method_name": "add_stock",
         "params": {"item_id": item_id, "amount": amount},
     }
-    return send_message_to_queue(request_body=req_body)
+    return await send_message_to_queue(request_body=req_body)
 
 
 @app.post("/add_all")
-def add_all_stock():
+async def add_all_stock():
     req_body = {"server_id": server_id, "method_name": "add_all_stock", "params": ""}
-    return send_message_to_queue(request_body=req_body)
+    return await send_message_to_queue(request_body=req_body)
 
 
 @app.post("/subtract/<item_id>/<amount>")
-def remove_stock(item_id: str, amount: int):
+async def remove_stock(item_id: str, amount: int):
     req_body = {
         "server_id": server_id,
-        "method_name": "remove_stock",
+        "method_name": "subtract_stock",
         "params": {"item_id": item_id, "amount": amount},
     }
-    return send_message_to_queue(request_body=req_body)
+    return await send_message_to_queue(request_body=req_body)
 
 
 @app.post("/subtract_all")
-def remove_all_stock():
-    req_body = {"server_id": server_id, "method_name": "remove_all_stock", "params": ""}
-    return send_message_to_queue(request_body=req_body)
+async def remove_all_stock():
+    req_body = {
+        "server_id": server_id,
+        "method_name": "subtract_all_stock",
+        "params": "",
+    }
+    return await send_message_to_queue(request_body=req_body)
 
 
-def send_message_to_queue(request_body):
+async def send_message_to_queue(request_body):
     request_id = str(uuid.uuid4())
+    print(f"Sending request {request_id}")
+    print(f"with server id {server_id}")
     request_body["request_id"] = request_id
-
-    channel.basic_publish(
-        exchange="", routing_key=request_queue, body=json.dumps(request_body)
+    await queue_handler.connect()
+    await queue_handler.channel.default_exchange.publish(
+        aio_pika.Message(body=json.dumps(request_body).encode()),
+        routing_key=outgoing_queue,
     )
-
-    response = wait_for_response(request_id)
-
+    response = await wait_for_response(request_id)
+    print(f"Response for request {request_id} received: {response}", flush=True)
     if response:
-        return jsonify(response)
+        return response
     else:
-        return jsonify({"error": "Timeout occurred"}), 500
+        return await make_response("No response", HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
-def wait_for_response(request_id):
+async def wait_for_response(request_id):
     start_time = time.time()
     timeout = 0.35
-
+    print("this is still ok")
     while time.time() - start_time < timeout:
-        if request_id in responses:
-            return responses.pop(request_id)
-
-        time.sleep(0.01)
+        if request_id in queue_handler.responses:
+            (bool_result, result) = queue_handler.responses.pop(request_id)
+            if bool_result:
+                return await make_response(result, HTTPStatus.OK)
+            else:
+                return await make_response(result, HTTPStatus.BAD_REQUEST)
+        await asyncio.sleep(0.01)
 
     return None
-
-
-def handle_message(channel, method, properties, body):
-    print("Received message: {}".format(body), flush=True)
-    request_id = body.decode()
-    print("Received response for request {}".format(request_id), flush=True)
-    responses[request_id] = {"msg": "Succesful response"}
-
-    channel.basic_ack(delivery_tag=method.delivery_tag)
-
-
-channel.queue_declare(queue=response_queue)
-channel.basic_consume(queue=response_queue, on_message_callback=handle_message)
-channel.start_consuming()

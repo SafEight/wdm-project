@@ -3,26 +3,23 @@ import uuid
 
 
 class Item:
-    def __init__(
-        self,
-        price,
-    ):
-        self.item_id = str(uuid.uuid4())
-        self.price = price
-        self.amount = 0
+    def __init__(self, item_id, price, stock):
+        self.item_id = item_id
+        self.price = int(price)
+        self.stock = int(stock)
 
     def toJSON(self):
         return json.dumps(self.__dict__)
 
-    def add_amount(self, amount):
-        self.amount += amount
+    def add_stock(self, stock):
+        self.stock += int(stock)
         return True
 
-    def subtract_amount(self, amount):
+    def subtract_stock(self, stock):
         try:
-            if self.amount - amount < 0:
+            if self.stock - stock < 0:
                 return False
-            self.amount -= amount
+            self.stock -= stock
             return True
         except ValueError as ve:
             return False

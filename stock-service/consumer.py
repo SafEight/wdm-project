@@ -3,7 +3,7 @@ from sender import Sender
 import pika
 import os
 from stock_service import StockService, StockServiceFunctions
-from message import Message
+from message import Message, OutgoingMessage
 
 host = os.environ["RMQ_HOST"]
 
@@ -47,8 +47,14 @@ class Consumer:
         print(method_name, flush=True)
 
         func = getattr(self.service.__class__, method_name)
-        res, message = func(self.service, **message.params)
-        self.sender.send_message(message)
+        bool_res, res = func(self.service, **message.params)
+        outgoing_message = OutgoingMessage(
+            server_id=message.server_id,
+            request_id=message.request_id,
+            bool_result=bool_res,
+            result=res,
+        )
+        self.sender.send_message(outgoing_message)
 
 
 if __name__ == "__main__":

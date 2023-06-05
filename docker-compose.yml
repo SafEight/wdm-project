@@ -40,7 +40,7 @@ services:
     container_name: stock-service
     build: ./stock
     image: stock:latest
-    command: gunicorn -b 0.0.0.0:5000 app:app -w 1 --timeout 10
+    command: uvicorn app:app --host 0.0.0.0 --port 5000
     env_file:
       - env/stock_redis.env
     depends_on:
