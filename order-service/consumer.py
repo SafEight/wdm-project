@@ -3,8 +3,7 @@ from sender import Sender
 import pika
 import os
 from order_service import OrderService, OrderServiceFunctions
-
-from message import Message
+from message import Message, OutgoingMessage
 
 host = os.environ["RMQ_HOST"]
 
@@ -48,8 +47,18 @@ class Consumer:
         print(method_name, flush=True)
 
         func = getattr(self.service.__class__, method_name)
-        res, message = func(self.service, **message.params)
-        self.sender.send_message(message)
+        bool_res, res = False, None
+        if message.params == "":
+            bool_res, res = func(self.service)
+        else:
+            bool_res, res = func(self.service, **message.params)
+        outgoing_message = OutgoingMessage(
+            server_id=message.server_id,
+            request_id=message.request_id,
+            bool_result=bool_res,
+            result=res,
+        )
+        self.sender.send_message(outgoing_message)
 
 
 if __name__ == "__main__":
@@ -63,5 +72,5 @@ if __name__ == "__main__":
     consumer.channel.basic_consume(
         queue=consumer.queue_name, on_message_callback=consumer.callback, auto_ack=True
     )
-    print(" [*] Waiting for messages. To exit press CTRL+C")
+    print("[*] Waiting for messages. To exit press CTRL+C")
     consumer.channel.start_consuming()

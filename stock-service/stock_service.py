@@ -2,6 +2,7 @@ from item import Item
 import redis
 import os
 import uuid
+import json
 
 DB = redis.Redis(
     host=os.environ["REDIS_HOST"],
@@ -68,7 +69,7 @@ class StockService:
         if not subtracted:
             return False, "Not enough stock!"
         self.db.set(item.item_id, item.toJSON())
-        return True, "Stock subtracted"
+        return True, "Subtracted stock!"
 
     @StockServiceFunctions.register("add_all_stock")
     def add_all_stock(self, items=None):
@@ -80,8 +81,29 @@ class StockService:
 
     @StockServiceFunctions.register("subtract_all_stock")
     def subtract_all_stock(self, items=None):
+        subtracted_items = []
+        total_cost = 0
         for item in items:
-            subtracted, msg = self.subtract_stock(item, 1)
-            if not subtracted:
-                return False, msg
-        return True, "All items subtracted!"
+            removed, price = self.subtract_one_stock(item, 1)
+            if not removed:
+                for sub_item in subtracted_items:
+                    self.add_stock(sub_item, 1)
+                return False, json.dumps(
+                    {"error": f"Insufficient stock or item not found! Item id: {item}."}
+                )
+
+            subtracted_items.append(item)
+            total_cost += price
+        return True, json.dumps({"total_cost": total_cost})
+
+    def subtract_one_stock(self, item_id=None, amount=None):
+        amount = int(amount)
+        item_json = self.db.get(item_id)
+        if not item_json:
+            return False, "Item not found!"
+        item = Item.fromJSON(item_json)
+        subtracted = item.subtract_stock(amount)
+        if not subtracted:
+            return False, "Not enough stock!"
+        self.db.set(item.item_id, item.toJSON())
+        return True, item.price

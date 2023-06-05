@@ -6,7 +6,7 @@ import json
 import os
 from connection import QueueHandler
 from http import HTTPStatus
-from quart import Quart, make_response, jsonify
+from quart import Quart, make_response, jsonify, request
 
 host = os.environ["RMQ_HOST"]
 
@@ -55,7 +55,12 @@ async def add_funds(item_id: str, amount: int):
 
 @app.post("/add_all")
 async def add_all_stock():
-    req_body = {"server_id": server_id, "method_name": "add_all_stock", "params": ""}
+    items = await request.get_json()
+    req_body = {
+        "server_id": server_id,
+        "method_name": "add_all_stock",
+        "params": {"items": items["items"]},
+    }
     return await send_message_to_queue(request_body=req_body)
 
 
@@ -71,10 +76,11 @@ async def remove_stock(item_id: str, amount: int):
 
 @app.post("/subtract_all")
 async def remove_all_stock():
+    items = await request.get_json()
     req_body = {
         "server_id": server_id,
         "method_name": "subtract_all_stock",
-        "params": "",
+        "params": {"items": items["items"]},
     }
     return await send_message_to_queue(request_body=req_body)
 
