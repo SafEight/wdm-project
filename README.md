@@ -45,6 +45,9 @@ Run `docker-compose up --build`.
 
 * `test`
     Folder containing some basic correctness tests for the entire system. (Feel free to enhance them)
+    
+## Extra:
+After implementing our synchronous SAGA based architecture we tried implementing a partly asynchronous Event-Driven architecture with a message queue. This was however not entirely consisten but did seem to scale very well. In the _7-implement-event-driven-architecture_ branch, you can run docker-compose up --build and see a working version with 6 (per microservice) proxies and 10 services (per microservice) running together. We did however not manage to deploy it with k8s (yet)
    
 ## Declaration of Honour:
 - **Joey**: Stock implementation + start of proxies for event-driven architecture
