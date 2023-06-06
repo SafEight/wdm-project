@@ -51,6 +51,6 @@ After implementing our synchronous SAGA based architecture we tried implementing
    
 ## Declaration of Honour:
 - **Joey**: Stock implementation + start of proxies for event-driven architecture
-- **Gaspar**: Sage implementation + Cloud deployment/testing :( --> GCP's quotas inhibit horizontal scaling
+- **Gaspar**: Sagas implementation + Cloud deployment/testing :( --> GCP's quotas inhibit horizontal scaling
 - **Safouane**: Payment implementation + CRDT Investigation with antidoteDB :( --> Practical implementation of CRDT's with lowerbounds is lacking
 - **Merlijn**: Order Implementation + Event Driven Architecture investigation :( --> Async programming is hard, k8s deployment was hard
