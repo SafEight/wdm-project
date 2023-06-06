@@ -35,7 +35,7 @@ class PaymentService:
     def create_user(self):
         user_id = str(uuid.uuid4())
         user = User(user_id=user_id, credit=0)
-        print(user.toJSON())
+        # print(user.toJSON())
         self.db.set(user.user_id, user.toJSON())
         return True, user.toJSON()
 
@@ -71,8 +71,8 @@ class PaymentService:
 
     @PaymentServiceFunctions.register("cancel")
     def cancel(self, order_id=None):
-        return True
+        return False
 
     @PaymentServiceFunctions.register("status")
     def status(self, user_id=None, order_id=None):
-        return True
+        return False

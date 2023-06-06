@@ -32,9 +32,9 @@ class QueueHandler:
     async def handle_message(self, message):
         async with message.process():
             message = message.body.decode()
-            print("Received message: {}".format(message), flush=True)
+            # print("Received message: {}".format(message), flush=True)
             message = IncomingMessage.fromJson(message)
-            print(message.result, flush=True)
+            # print(message.result, flush=True)
             self.responses[message.request_id] = (message.bool_result, message.result)
             return
 
@@ -42,8 +42,10 @@ class QueueHandler:
         self.connection = await aio_pika.connect_robust(
             f"amqp://guest:guest@{host}/", loop=self.loop
         )
-        print(f"Connected to rabbitmq {self.connection}", flush=True)
+        # print(f"Connected to rabbitmq {self.connection}", flush=True)
         self.channel = await self.connection.channel()
+        await self.channel.set_qos(prefetch_count=100)
+
         self.outgoing_queue = await self.channel.declare_queue(self.outgoing_queue_name)
         self.incoming_queue = await self.channel.declare_queue(self.incoming_queue_name)
         await self.start_consuming()

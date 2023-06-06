@@ -17,7 +17,7 @@ class Sender:
 
     def send_message(self, outgoing_message: OutgoingMessage):
         try:
-            print("Sending message: {}".format(outgoing_message.toJson()), flush=True)
+            # print("Sending message: {}".format(outgoing_message.toJson()), flush=True)
             self.channel.basic_publish(
                 exchange="",
                 routing_key=outgoing_message.server_id,
@@ -25,5 +25,5 @@ class Sender:
             )
             return True
         except Exception as e:
-            print("Error while sending message: {}".format(e), flush=True)
+            # print("Error while sending message: {}".format(e), flush=True)
             return False

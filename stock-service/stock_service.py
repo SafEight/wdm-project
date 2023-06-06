@@ -42,7 +42,7 @@ class StockService:
     @StockServiceFunctions.register("find_item")
     def find_item(self, item_id=None):
         item_json = self.db.get(item_id)
-        print(item_json, flush=True)
+        # print(item_json, flush=True)
         if not item_id:
             return False, "Item not found!"
         return True, item_json

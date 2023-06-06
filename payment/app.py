@@ -82,8 +82,8 @@ async def payment_status(user_id: str, order_id: str):
 
 async def send_message_to_queue(request_body):
     request_id = str(uuid.uuid4())
-    print(f"Sending request {request_id}")
-    print(f"with server id {server_id}")
+    # print(f"Sending request {request_id}")
+    # print(f"with server id {server_id}")
     request_body["request_id"] = request_id
     await queue_handler.connect()
     await queue_handler.channel.default_exchange.publish(
@@ -91,7 +91,7 @@ async def send_message_to_queue(request_body):
         routing_key=outgoing_queue,
     )
     response = await wait_for_response(request_id)
-    print(f"Response for request {request_id} received: {response}", flush=True)
+    # print(f"Response for request {request_id} received: {response}", flush=True)
     if response:
         return response
     else:
@@ -100,8 +100,8 @@ async def send_message_to_queue(request_body):
 
 async def wait_for_response(request_id):
     start_time = time.time()
-    timeout = 0.35
-    print("this is still ok")
+    timeout = 1
+    # print("this is still ok")
     while time.time() - start_time < timeout:
         if request_id in queue_handler.responses:
             (bool_result, result) = queue_handler.responses.pop(request_id)

@@ -3,7 +3,7 @@ import uuid
 
 
 class Order:
-    def __init__(self, user_id, order_id=str(uuid.uuid4()), paid=False, items=[], total_cost=0):
+    def __init__(self, order_id, user_id, paid, items, total_cost):
         self.order_id = order_id
         self.paid = paid
         self.items = items

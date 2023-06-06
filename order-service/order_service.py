@@ -3,6 +3,8 @@ from order import Order
 import redis
 import os
 import requests
+import uuid
+
 
 DB = redis.Redis(
     host=os.environ["REDIS_HOST"],
@@ -34,9 +36,9 @@ class OrderService:
 
     @OrderServiceFunctions.register("create_order")
     def create_order(self, user_id=None):
-        o = Order(user_id)
+        order_id = str(uuid.uuid4())
+        o = Order(order_id, user_id, False, [], 0)
         self.db.set(o.order_id, o.toJSON())
-        print(o.toJSON(), flush=True)
         return True, o.toJSON()
 
     @OrderServiceFunctions.register("remove_order")
@@ -65,12 +67,11 @@ class OrderService:
             return False, "Order does not exist!"
 
         o = Order.fromJSON(order_json)
-
         if o.paid:
             return False, "Order is already paid!"
 
         if not o.remove_item(item_id):
-            return False, "Item does not exist!"
+            return False, f"Order: {o.toJSON()} Item does not exist: {item_id}!"
 
         self.db.set(o.order_id, o.toJSON())
         return True, f"Removed item!: {item_id}"
@@ -102,11 +103,11 @@ class OrderService:
         subtract_all = f"{stockService}/subtract_all"
         subtract_all_data = {"items": order.items}
         subtract_all_response = requests.post(subtract_all, json=subtract_all_data)
-        print(f"subtract_all_response: {subtract_all_response.status_code}", flush=True)
-        print(
-            f"subtract_all_response content: {subtract_all_response.json()}",
-            flush=True,
-        )
+        # print(f"subtract_all_response: {subtract_all_response.status_code}", flush=True)
+        # print(
+        #     f"subtract_all_response content: {subtract_all_response.json()}",
+        #     flush=True,
+        # )
         if subtract_all_response.status_code >= 400:
             return False, subtract_all_response.json()
 
@@ -119,8 +120,8 @@ class OrderService:
             f"{paymentService}/pay/{order.user_id}/{order.order_id}/{order.total_cost}"
         )
         pay_response = requests.post(pay)
-        print(f"pay_response: {pay_response}", flush=True)
-        print(f"pay_response: {pay_response.content}", flush=True)
+        # print(f"pay_response: {pay_response}", flush=True)
+        # print(f"pay_response: {pay_response.content}", flush=True)
         if pay_response.status_code >= 400:
             # rollback stock subtractions
             add_all = f"{stockService}/add_all"
