@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.26.0 (40646f47)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: order-service-test
+  name: order-service-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: order-service-test
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert
+        kompose.version: 1.26.0 (40646f47)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: order-service-test
+    spec:
+      containers:
+        - env:
+            - name: GATEWAY_URL
+              value: http://gateway:80
+            - name: PAYMENT_SERVICE
+              value: http://gateway:80/payment
+            - name: REDIS_DB
+              valueFrom:
+                configMapKeyRef:
+                  key: REDIS_DB
+                  name: env-order-redis-env
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  key: REDIS_HOST
+                  name: env-order-redis-env
+            - name: REDIS_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  key: REDIS_PASSWORD
+                  name: env-order-redis-env
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  key: REDIS_PORT
+                  name: env-order-redis-env
+            - name: RMQ_HOST
+              value: rmq
+            - name: STOCK_SERVICE
+              value: http://gateway:80/stock
+          image: order-service-test
+          name: order-service-test
+          resources: {}
+      restartPolicy: Always
+status: {}

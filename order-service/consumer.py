@@ -20,9 +20,15 @@ class Consumer:
         self.queue_name = queue_name
         self.output_queue_name = output_queue_name
         self.host = host
-        self.connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=self.host)
-        )
+        while True:
+            try:
+                self.connection = pika.BlockingConnection(
+                    pika.ConnectionParameters(host=self.host)
+                )
+                print("========= RABBITMQ CONNECTED ==========", flush=True)
+                break
+            except:
+                sleep(5)
         self.channel = self.connection.channel()
         self.channel.queue_declare(queue=self.queue_name)
         self.service = ServiceClass()

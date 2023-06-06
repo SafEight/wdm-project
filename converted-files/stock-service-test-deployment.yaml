@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.26.0 (40646f47)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: stock-service-test
+  name: stock-service-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: stock-service-test
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert
+        kompose.version: 1.26.0 (40646f47)
+      creationTimestamp: null
+      labels:
+        io.kompose.service: stock-service-test
+    spec:
+      containers:
+        - env:
+            - name: REDIS_DB
+              valueFrom:
+                configMapKeyRef:
+                  key: REDIS_DB
+                  name: env-stock-redis-env
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  key: REDIS_HOST
+                  name: env-stock-redis-env
+            - name: REDIS_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  key: REDIS_PASSWORD
+                  name: env-stock-redis-env
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  key: REDIS_PORT
+                  name: env-stock-redis-env
+            - name: RMQ_HOST
+              value: rmq
+          image: stock-service-test
+          name: stock-service-test
+          resources: {}
+      restartPolicy: Always
+status: {}
