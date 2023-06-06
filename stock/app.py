@@ -3,25 +3,18 @@ import atexit
 import json
 
 from flask import Flask, jsonify, request
-import redis
 from stock import Stock
+from antidotedb import AntidoteClient, Key, Register, Counter
 
+db = AntidoteClient('antidote-service', 8087)
+stock = Stock(db)
 
 app = Flask("stock-service")
-
-db: redis.Redis = redis.Redis(host=os.environ['REDIS_HOST'],
-                              port=int(os.environ['REDIS_PORT']),
-                              password=os.environ['REDIS_PASSWORD'],
-                              db=int(os.environ['REDIS_DB']))
-
 
 def close_db_connection():
     db.close()
 
-
 atexit.register(close_db_connection)
-
-stock = Stock(db)
 
 @app.get("/")
 def status():

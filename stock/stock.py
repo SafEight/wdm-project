@@ -1,6 +1,6 @@
 import json
 import uuid
-import redis
+from antidotedb import AntidoteClient, Key, Counter, Set, Map
 
 class Stock:
     def __init__(self, db):
@@ -11,7 +11,8 @@ class Stock:
                           sort_keys=True, indent=4)
 
     def find(self, item_id):
-        item_data = self.db.get(item_id)
+        tx = self.db.start_transaction()
+        item_data = tx.read_objects(Key("stock", item_id, "MAP"))
         if item_data:
             item = json.loads(item_data)
             return json.dumps({"item_id": item_id, "stock": item["amount"], "price": item["price"]})
@@ -62,6 +63,13 @@ class Stock:
         
     def create(self, price):
         item_id = str(uuid.uuid4())
-        item = {"price": int(price), "amount": 0}
-        self.db.set(item_id, json.dumps(item))
+        
+        item = Key("stock", item_id, "MAP")
+        price = Key("", "price", int(price))
+        amount = Key("", "amount", 0)
+
+        tx = self.db.start_transaction()
+        tx.update_objects(Map.UpdateOp(item, [price, amount]))
+        tx.commit()
+        
         return item_id

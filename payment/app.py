@@ -1,17 +1,11 @@
 import os
 import atexit, uuid
-
 from flask import Flask, jsonify
-import redis
+from antidotedb import AntidoteClient, Key, Register, Counter
 
+db = AntidoteClient('antidote-service', 8087)
 
 app = Flask("payment-service")
-
-db: redis.Redis = redis.Redis(host=os.environ['REDIS_HOST'],
-                              port=int(os.environ['REDIS_PORT']),
-                              password=os.environ['REDIS_PASSWORD'],
-                              db=int(os.environ['REDIS_DB']))
-
 
 def close_db_connection():
     db.close()
@@ -26,43 +20,56 @@ def status():
 def create_user():
     # creates a user with 0 credit
     user_id = str(uuid.uuid4())
-    db.set(f"user:{user_id}", 0)
+    key = Key("payment", user_id, "CCOUNTER")
+    tx = db.start_transaction()
+    tx.update_objects(Counter.IncOp(key, 0))
+    tx.commit()
     return jsonify({"user_id": user_id}), 200
 
 @app.get('/find_user/<user_id>')
 def find_user(user_id: str):
     # returns the user information
-    user_credit = db.get(f"user:{user_id}")
+    key = Key("payment", user_id, "COUNTER")
+    tx = db.start_transaction()
+    user_credit = tx.read_objects(key)
     if user_credit is None:
         return jsonify({"error": "User not found"}), 404
-    return jsonify({"user_id": user_id, "credit": int(user_credit)}), 200
+    else:
+        user_credit = user_credit[0].value()
+        return jsonify({"user_id": user_id, "credit": user_credit}), 200
 
 @app.post('/add_funds/<user_id>/<amount>')
 def add_credit(user_id: str, amount: int):
     # adds funds (amount) to the user’s (user_id) account
-    user_credit = db.get(f"user:{user_id}")
+    key = Key("payment", user_id, "COUNTER")
+    tx = db.start_transaction()
+    user_credit = tx.read_objects(key)
     if user_credit is None:
         return jsonify({"error": "User not found"}), 404
     else:
-        db.incrby(f"user:{user_id}", amount)
+        tx.update_objects(Counter.IncOp(key, amount))
+        tx.commit()
         return jsonify({"msg": "Funds added"}), 200
 
 @app.post('/pay/<user_id>/<order_id>/<amount>')
 def remove_credit(user_id: str, order_id: str, amount: int):
     # subtracts the amount of the order from the user’s credit (returns failure if credit is not enough)
-    with db.lock(user_id):
-        user_credit = db.get(f"user:{user_id}")
-        if user_credit is None:
-            return jsonify({"error": "User not found"}), 404
-        user_credit = int(user_credit)
-        if user_credit < int(amount):
-            return jsonify({"error": "Insufficient credit"}), 400
-        db.decrby(f"user:{user_id}", int(amount))
-        return jsonify({"msg": "Payment successful"}), 200
+    key = Key("payment", user_id, "BCOUNTER")
+    tx = db.start_transaction()
+    user_credit = tx.read_objects(key)
+    if user_credit is None:
+        return jsonify({"error": "User not found"}), 404
+    if user_credit[0].value() < int(amount):
+        return jsonify({"error": "Insufficient credit"}), 400
+    tx.update_objects(Counter.IncOp(key, -amount))
+    tx.commit()
+    return jsonify({"msg": "Payment successful"}), 200
+
 
 @app.post('/cancel/<user_id>/<order_id>')
 def cancel_payment(user_id: str, order_id: str):
-    # cancels payment made by a specific user for a specific order.
+    # cancels payment made by a specific user for a specific order. TODO
+    tx = db.start_transaction()
     payment = db.get(f"payment:{user_id}:{order_id}")
     if payment is None:
         return jsonify({"error": "Payment not found"}), 404

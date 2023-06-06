@@ -3,15 +3,13 @@ import atexit
 import requests
 
 from flask import Flask, jsonify
-import redis
 from orders import Order, order_from_JSON
+from antidotedb import AntidoteClient, Key, Register, Counter
+
+db = AntidoteClient('antidote-service', 8087)
 
 app = Flask("order-service")
 
-db: redis.Redis = redis.Redis(host=os.environ['REDIS_HOST'],
-                              port=int(os.environ['REDIS_PORT']),
-                              password=os.environ['REDIS_PASSWORD'],
-                              db=int(os.environ['REDIS_DB']))
 
 paymentService = os.environ['PAYMENT_SERVICE']
 stockService = os.environ['STOCK_SERVICE']
