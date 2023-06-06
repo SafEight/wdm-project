@@ -48,26 +48,51 @@ class PaymentService:
 
     @PaymentServiceFunctions.register("add_funds")
     def add_funds(self, user_id=None, amount=None):
-        amount = int(amount)
-        user_json = self.db.get(user_id)
-        if not user_json:
-            return False, "User does not exist!"
-        u = User.fromJSON(user_json)
-        u.add_funds(amount)
-        self.db.set(u.user_id, u.toJSON())
-        return True, f"Added funds!: {amount}"
+        pipe = self.db.pipeline()
+        while True:
+            try:
+                amount = int(amount)
+                pipe.watch(user_id)
+                user_json = pipe.get(user_id)
+
+                if not user_json:
+                    pipe.unwatch()
+                    return False, "User does not exist!"
+                
+                u = User.fromJSON(user_json)
+                u.add_funds(amount)
+
+                pipe.multi()
+                pipe.set(u.user_id, u.toJSON())
+                pipe.execute()
+                return True, f"Added funds!: {amount}"
+            except redis.WatchError:
+                continue
 
     @PaymentServiceFunctions.register("pay")
     def pay(self, user_id=None, order_id=None, amount=None):
-        amount = int(amount)
-        user_json = self.db.get(user_id)
-        if not user_json:
-            return False, "User does not exist!"
-        u = User.fromJSON(user_json)
-        if not u.pay(amount):
-            return False, "Insufficient funds!"
-        self.db.set(u.user_id, u.toJSON())
-        return True, f"Paid!: {amount}"
+        pipe = self.db.pipeline()
+        while True:
+            try:
+                amount = int(amount)
+                pipe.watch(user_id)
+                user_json = pipe.get(user_id)
+
+                if not user_json:
+                    pipe.unwatch()
+                    return False, "User does not exist!"
+                
+                u = User.fromJSON(user_json)
+                if not u.pay(amount):
+                    pipe.unwatch()
+                    return False, "Insufficient funds!"
+                
+                pipe.multi()
+                pipe.set(u.user_id, u.toJSON())
+                pipe.execute()
+                return True, f"Paid!: {amount}"
+            except redis.WatchError:
+                continue
 
     @PaymentServiceFunctions.register("cancel")
     def cancel(self, order_id=None):

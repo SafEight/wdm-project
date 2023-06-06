@@ -48,33 +48,56 @@ class OrderService:
 
     @OrderServiceFunctions.register("add_item")
     def add_item(self, order_id=None, item_id=None):
-        order_json = self.db.get(order_id)
-        if not order_json:
-            return False, "Order does not exist!"
+        pipe = self.db.pipeline()
+        while True:
+            try:
+                pipe.watch(order_id)
+                order_json = pipe.get(order_id)
 
-        o = Order.fromJSON(order_json)
-        if not o.add_item(item_id):
-            return False, "Item does not exist!"
+                if not order_json:
+                    pipe.unwatch()
+                    return False, "Order does not exist!"
 
-        self.db.set(o.order_id, o.toJSON())
-        return True, f"Added item!: {item_id}"
+                o = Order.fromJSON(order_json)
+                if not o.add_item(item_id):
+                    pipe.unwatch()
+                    return False, "Item does not exist!"
+
+                pipe.multi()
+                pipe.set(o.order_id, o.toJSON())
+                pipe.execute()
+                return True, f"Added item!: {item_id}"
+            except redis.WatchError:
+                continue
 
     @OrderServiceFunctions.register("remove_item")
     def remove_item(self, order_id=None, item_id=None):
-        order_json = self.db.get(order_id)
+        pipe = self.db.pipeline()
+        while True:
+            try:
+                pipe.watch(order_id)
+                order_json = pipe.get(order_id)
 
-        if not order_json:
-            return False, "Order does not exist!"
+                if not order_json:
+                    pipe.unwatch()
+                    return False, "Order does not exist!"
 
-        o = Order.fromJSON(order_json)
-        if o.paid:
-            return False, "Order is already paid!"
+                o = Order.fromJSON(order_json)
 
-        if not o.remove_item(item_id):
-            return False, f"Order: {o.toJSON()} Item does not exist: {item_id}!"
+                if o.paid:
+                    pipe.unwatch()
+                    return False, "Order is already paid!"
 
-        self.db.set(o.order_id, o.toJSON())
-        return True, f"Removed item!: {item_id}"
+                if not o.remove_item(item_id):
+                    pipe.unwatch()
+                    return False, "Item does not exist!"
+
+                pipe.multi()
+                pipe.set(o.order_id, o.toJSON())
+                pipe.execute()
+                return True, f"Removed item!: {item_id}"
+            except redis.WatchError:
+                continue
 
     @OrderServiceFunctions.register("find_order")
     def find_order(self, order_id=None):

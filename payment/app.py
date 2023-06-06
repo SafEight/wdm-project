@@ -100,7 +100,7 @@ async def send_message_to_queue(request_body):
 
 async def wait_for_response(request_id):
     start_time = time.time()
-    timeout = 1
+    timeout = 0.2
     # print("this is still ok")
     while time.time() - start_time < timeout:
         if request_id in queue_handler.responses:

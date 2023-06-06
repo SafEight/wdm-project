@@ -105,7 +105,7 @@ async def send_message_to_queue(request_body):
 
 async def wait_for_response(request_id):
     start_time = time.time()
-    timeout = 1
+    timeout = 0.2
     # print("this is still ok")
     while time.time() - start_time < timeout:
         print(f"responses:\n\r{queue_handler.responses}", flush=True)
@@ -115,6 +115,6 @@ async def wait_for_response(request_id):
                 return await make_response(result, HTTPStatus.OK)
             else:
                 return await make_response(result, HTTPStatus.BAD_REQUEST)
-        await asyncio.sleep(0.0001)
+        await asyncio.sleep(0.01)
 
     return None
