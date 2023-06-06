@@ -20,11 +20,11 @@ services:
     env_file:
       - env/order_redis.env
 
-  order-db:
-    image: redis:latest
-    command: redis-server --requirepass redis --maxmemory 512mb
-    ports:
-      - "5001:6379"
+  # order-db:
+  #   image: redis:latest
+  #   command: redis-server --requirepass redis --maxmemory 512mb
+  #   ports:
+  #     - "5001:6379"
 
   stock-service:
     container_name: stock-service
@@ -34,11 +34,11 @@ services:
     env_file:
       - env/stock_redis.env
 
-  stock-db:
-    image: redis:latest
-    command: redis-server --requirepass redis --maxmemory 512mb
-    ports:
-      - "5002:6379"
+  # stock-db:
+  #   image: redis:latest
+  #   command: redis-server --requirepass redis --maxmemory 512mb
+  #   ports:
+  #     - "5002:6379"
 
   payment-service:
     container_name: payment-service
@@ -48,8 +48,8 @@ services:
     env_file:
       - env/payment_redis.env
 
-  payment-db:
-    image: redis:latest
-    command: redis-server --requirepass redis --maxmemory 512mb
-    ports:
-      - "5003:6379"
+  # payment-db:
+  #   image: redis:latest
+  #   command: redis-server --requirepass redis --maxmemory 512mb
+  #   ports:
+  #     - "5003:6379"

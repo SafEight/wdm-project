@@ -1,7 +1,7 @@
 import os
 import atexit, uuid
 from flask import Flask, jsonify
-from antidotedb import AntidoteClient, Key, Register, Counter
+from antidotedb import AntidoteClient, Key, Register, Counter, Flag
 
 db = AntidoteClient('antidote-service', 8087)
 
@@ -20,7 +20,7 @@ def status():
 def create_user():
     # creates a user with 0 credit
     user_id = str(uuid.uuid4())
-    key = Key("payment", user_id, "CCOUNTER")
+    key = Key("payment", user_id, "COUNTER")
     tx = db.start_transaction()
     tx.update_objects(Counter.IncOp(key, 0))
     tx.commit()
@@ -70,11 +70,14 @@ def remove_credit(user_id: str, order_id: str, amount: int):
 def cancel_payment(user_id: str, order_id: str):
     # cancels payment made by a specific user for a specific order. TODO
     tx = db.start_transaction()
-    payment = db.get(f"payment:{user_id}:{order_id}")
+    key = Key("order", f"{user_id}:{order_id}", "FLAG_DW")
+    payment = tx.read_objects(key)
     if payment is None:
         return jsonify({"error": "Payment not found"}), 404
-    db.delete(f"payment:{user_id}:{order_id}")
-    return jsonify({"msg": "Payment cancelled"}), 200
+    else:
+        tx.update_objects(Flag.UpdateOp(key, False))
+        tx.commit()
+        return jsonify({"msg": "Payment cancelled"}), 200
 
 @app.post('/status/<user_id>/<order_id>')
 def payment_status(user_id: str, order_id: str):
