@@ -45,3 +45,9 @@ Run `docker-compose up --build`.
 
 * `test`
     Folder containing some basic correctness tests for the entire system. (Feel free to enhance them)
+   
+## Who did what:
+- **Joey**: Stock implementation + start of proxies for event-driven architecture
+- **Gaspar**: Sage implemntation + Cloud deployment/testing :( --> GCP doesn't let you scale on free account
+- **Safouane**: Payment implementation + CRDT Investigation with antidoteDB :( --> Practical implemntation of CRDT's with lowerbounds is lacking
+- **Merlijn**: Order Implementation + Event Driven Architecture investigation :( --> Async programming is hard, k8s deployment was hard
