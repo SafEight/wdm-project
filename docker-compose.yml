@@ -8,56 +8,17 @@ services:
     ports:
       - "8000:80"
     depends_on:
-      - order-service
-      - payment-service
-      - stock-service
-
-  order-service:
-    container_name: order-service
-    build: ./order
-    image: order:latest
-    environment:
-      - GATEWAY_URL=http://gateway:80
-      - PAYMENT_SERVICE=http://gateway:80/payment
-      - STOCK_SERVICE=http://gateway:80/stock
-      - RMQ_HOST=rmq
-    command: uvicorn app:app --host 0.0.0.0 --port 5000
-    env_file:
-      - env/order_redis.env
-    links:
-      - rmq
+      - order-proxy
+      - payment-proxy
+      - stock-proxy
 
   order-db:
     image: redis:latest
     command: redis-server --requirepass redis --maxmemory 512mb
 
-  stock-service:
-    container_name: stock-service
-    build: ./stock
-    image: stock:latest
-    command: uvicorn app:app --host 0.0.0.0 --port 5000
-    env_file:
-      - env/stock_redis.env
-    links:
-      - rmq
-    environment:
-      - RMQ_HOST=rmq
-
   stock-db:
     image: redis:latest
     command: redis-server --requirepass redis --maxmemory 512mb
-
-  payment-service:
-    container_name: payment-service
-    build: ./payment
-    image: user:latest
-    command: uvicorn app:app --host 0.0.0.0 --port 5000
-    env_file:
-      - env/payment_redis.env
-    links:
-      - rmq
-    environment:
-      - RMQ_HOST=rmq
 
   payment-db:
     image: redis:latest
@@ -79,8 +40,8 @@ services:
       timeout: 5s
       retries: 5
 
-  order-service-test:
-    container_name: order-service-test
+  order-service:
+    container_name: order-service
     build: ./order-service
     env_file:
       - env/order_redis.env
@@ -92,8 +53,8 @@ services:
       - STOCK_SERVICE=http://gateway:80/stock
       - RMQ_HOST=rmq
 
-  payment-service-test:
-    container_name: payment-service-test
+  payment-service:
+    container_name: payment-service
     build: ./payment-service
     env_file:
       - env/payment_redis.env
@@ -102,9 +63,192 @@ services:
     environment:
       - RMQ_HOST=rmq
 
-  stock-service-test:
-    container_name: stock-service-test
+  stock-service:
+    container_name: stock-service
     build: ./stock-service
+    env_file:
+      - env/stock_redis.env
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq
+
+  order-service-2:
+    container_name: order-service-2
+    build: ./order-service
+    env_file:
+      - env/order_redis.env
+    links:
+      - rmq
+    environment:
+      - GATEWAY_URL=http://gateway:80
+      - PAYMENT_SERVICE=http://gateway:80/payment
+      - STOCK_SERVICE=http://gateway:80/stock
+      - RMQ_HOST=rmq
+
+  payment-service-2:
+    container_name: payment-service-2
+    build: ./payment-service
+    env_file:
+      - env/payment_redis.env
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq
+
+  stock-service-2:
+    container_name: stock-service-2
+    build: ./stock-service
+    env_file:
+      - env/stock_redis.env
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq
+
+  order-service-3:
+    container_name: order-service-3
+    build: ./order-service
+    env_file:
+      - env/order_redis.env
+    links:
+      - rmq
+    environment:
+      - GATEWAY_URL=http://gateway:80
+      - PAYMENT_SERVICE=http://gateway:80/payment
+      - STOCK_SERVICE=http://gateway:80/stock
+      - RMQ_HOST=rmq
+
+  payment-service-3:
+    container_name: payment-service-3
+    build: ./payment-service
+    env_file:
+      - env/payment_redis.env
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq
+
+  stock-service-3:
+    container_name: stock-service-3
+    build: ./stock-service
+    env_file:
+      - env/stock_redis.env
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq
+
+  payment-proxy:
+    container_name: payment-proxy
+    build: ./payment
+    image: payment-proxy:latest
+    command: uvicorn app:app --host 0.0.0.0 --port 5000
+    env_file:
+      - env/payment_redis.env
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq
+
+  order-proxy:
+    container_name: order-proxy
+    build: ./order
+    image: order-proxy:latest
+    environment:
+      - GATEWAY_URL=http://gateway:80
+      - PAYMENT_SERVICE=http://gateway:80/payment
+      - STOCK_SERVICE=http://gateway:80/stock
+      - RMQ_HOST=rmq
+    command: uvicorn app:app --host 0.0.0.0 --port 5000
+    env_file:
+      - env/order_redis.env
+    links:
+      - rmq
+
+  stock-proxy:
+    container_name: stock-proxy
+    build: ./stock
+    image: stock-proxy:latest
+    command: uvicorn app:app --host 0.0.0.0 --port 5000
+    env_file:
+      - env/stock_redis.env
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq
+
+  payment-proxy-2:
+    container_name: payment-proxy-2
+    build: ./payment
+    image: payment-proxy:latest
+    command: uvicorn app:app --host 0.0.0.0 --port 5000
+    env_file:
+      - env/payment_redis.env
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq
+
+  order-proxy-2:
+    container_name: order-proxy-2
+    build: ./order
+    image: order-proxy:latest
+    environment:
+      - GATEWAY_URL=http://gateway:80
+      - PAYMENT_SERVICE=http://gateway:80/payment
+      - STOCK_SERVICE=http://gateway:80/stock
+      - RMQ_HOST=rmq
+    command: uvicorn app:app --host 0.0.0.0 --port 5000
+    env_file:
+      - env/order_redis.env
+    links:
+      - rmq
+
+  stock-proxy-2:
+    container_name: stock-proxy-2
+    build: ./stock
+    image: stock-proxy:latest
+    command: uvicorn app:app --host 0.0.0.0 --port 5000
+    env_file:
+      - env/stock_redis.env
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq
+
+  payment-proxy-3:
+    container_name: payment-proxy-3
+    build: ./payment
+    image: payment-proxy:latest
+    command: uvicorn app:app --host 0.0.0.0 --port 5000
+    env_file:
+      - env/payment_redis.env
+    links:
+      - rmq
+    environment:
+      - RMQ_HOST=rmq
+
+  order-proxy-3:
+    container_name: order-proxy-3
+    build: ./order
+    image: order-proxy:latest
+    environment:
+      - GATEWAY_URL=http://gateway:80
+      - PAYMENT_SERVICE=http://gateway:80/payment
+      - STOCK_SERVICE=http://gateway:80/stock
+      - RMQ_HOST=rmq
+    command: uvicorn app:app --host 0.0.0.0 --port 5000
+    env_file:
+      - env/order_redis.env
+    links:
+      - rmq
+
+  stock-proxy-3:
+    container_name: stock-proxy-3
+    build: ./stock
+    image: stock-proxy:latest
+    command: uvicorn app:app --host 0.0.0.0 --port 5000
     env_file:
       - env/stock_redis.env
     links:
