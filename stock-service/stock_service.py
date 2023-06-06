@@ -37,6 +37,7 @@ class StockService:
         item_id = str(uuid.uuid4())
         item = Item(item_id, price, 0)
         self.db.set(item.item_id, item.toJSON())
+        print(item.toJSON(), flush=True)
         return True, item.toJSON()
 
     @StockServiceFunctions.register("find_item")
@@ -49,27 +50,53 @@ class StockService:
 
     @StockServiceFunctions.register("add_stock")
     def add_stock(self, item_id=None, amount=None):
-        amount = int(amount)
-        item_json = self.db.get(item_id)
-        if not item_json:
-            return False, "Item not found!"
-        item = Item.fromJSON(item_json)
-        item.add_stock(amount)
-        self.db.set(item.item_id, item.toJSON())
-        return True, "Stock added"
+        pipe = self.db.pipeline()
+        while True:
+            try:
+                amount = int(amount)
+                pipe.watch(item_id)
+                item_json = pipe.get(item_id)
+        
+                if not item_json:
+                    pipe.unwatch()
+                    return False, "Item not found!"
+                
+                item = Item.fromJSON(item_json)
+                item.add_stock(amount)
+                pipe.multi()
+                pipe.set(item.item_id, item.toJSON())
+                print(item.toJSON(), flush=True)
+                pipe.execute()
+                return True, "Stock added"
+            except redis.WatchError:
+                continue
+        
 
     @StockServiceFunctions.register("subtract_stock")
     def subtract_stock(self, item_id=None, amount=None):
-        amount = int(amount)
-        item_json = self.db.get(item_id)
-        if not item_json:
-            return False, "Item not found!"
-        item = Item.fromJSON(item_json)
-        subtracted = item.subtract_stock(amount)
-        if not subtracted:
-            return False, "Not enough stock!"
-        self.db.set(item.item_id, item.toJSON())
-        return True, "Subtracted stock!"
+        pipe = self.db.pipeline()
+        while True:
+            try:
+                amount = int(amount)
+                pipe.watch(item_id)
+                item_json = pipe.get(item_id)
+
+                if not item_json:
+                    pipe.unwatch()
+                    return False, "Item not found!"
+                item = Item.fromJSON(item_json)
+                subtracted = item.subtract_stock(amount)
+
+                if not subtracted:
+                    pipe.unwatch()
+                    return False, "Not enough stock!"
+                
+                pipe.multi()
+                pipe.set(item.item_id, item.toJSON())
+                pipe.execute()
+                return True, "Subtracted stock!"
+            except redis.WatchError:
+                continue
 
     @StockServiceFunctions.register("add_all_stock")
     def add_all_stock(self, items=None):
@@ -93,17 +120,30 @@ class StockService:
                 )
 
             subtracted_items.append(item)
-            total_cost += price
+            total_cost += price['price']
         return True, json.dumps({"total_cost": total_cost})
 
     def subtract_one_stock(self, item_id=None, amount=None):
-        amount = int(amount)
-        item_json = self.db.get(item_id)
-        if not item_json:
-            return False, "Item not found!"
-        item = Item.fromJSON(item_json)
-        subtracted = item.subtract_stock(amount)
-        if not subtracted:
-            return False, "Not enough stock!"
-        self.db.set(item.item_id, item.toJSON())
-        return True, item.price
+        pipe = self.db.pipeline()
+        while True:
+            try:
+                amount = int(amount)
+                pipe.watch(item_id)
+                item_json = pipe.get(item_id)
+
+                if not item_json:
+                    pipe.unwatch()
+                    return False, {"error":"Item not found!"}
+                
+                item = Item.fromJSON(item_json)
+                subtracted = item.subtract_stock(amount)
+                if not subtracted:
+                    pipe.unwatch()
+                    return False, {"error": "Not enough stock!"}
+                
+                pipe.multi()
+                pipe.set(item.item_id, item.toJSON())
+                pipe.execute()
+                return True, {"price":item.price}
+            except redis.WatchError:
+                continue

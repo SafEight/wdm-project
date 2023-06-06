@@ -113,6 +113,6 @@ async def wait_for_response(request_id):
                 return await make_response(result, HTTPStatus.OK)
             else:
                 return await make_response(result, HTTPStatus.BAD_REQUEST)
-        await asyncio.sleep(0.0001)
+        await asyncio.sleep(0.01)
 
     return None
